@@ -11,7 +11,7 @@ const authOptions = {
       },
       async authorize(credentials) {
         // For demo purposes, we'll allow any email/password.
-        // In production, validate against your database.
+        // In production, validate against the database.
         if (credentials?.email) {
           return {
             id: "1",
