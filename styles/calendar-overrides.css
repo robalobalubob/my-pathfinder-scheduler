@@ -1,0 +1,13 @@
+.rbc-today {
+    background-color: var(--primary) !important;
+    color: #ffffff !important;
+}
+
+.rbc-off-range-bg {
+    color: var(--foreground) !important;
+}
+
+.rbc-header {
+    color: var(--foreground) !important;
+}
+  
