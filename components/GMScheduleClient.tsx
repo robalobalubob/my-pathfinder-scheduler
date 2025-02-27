@@ -24,7 +24,7 @@ export default function GMScheduleClient() {
 
   useEffect(() => {
     if (status === "loading") return;
-    if (!session || !session.user || session.user.role !== "gm") {
+    if (!session || !session.user || (session.user.role !== "gm" && session.user.role !== "admin")) {
       router.push("/");
       return;
     }
@@ -54,7 +54,6 @@ export default function GMScheduleClient() {
     });
     const result = await res.json();
     console.log("Scheduled session:", result);
-    // Optionally clear form fields or refresh a list of sessions.
   };
 
   return (

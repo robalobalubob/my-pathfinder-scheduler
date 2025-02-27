@@ -1,15 +1,28 @@
 "use client";
-import React, { useState } from 'react';
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
+
 
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const AvailabilityForm: React.FC = () => {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [name, setName] = useState('');
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [timeOption, setTimeOption] = useState<'specific' | 'allDay'>('specific');
   const [timeRange, setTimeRange] = useState({ start: '', end: '' });
   const [repeatOption, setRepeatOption] = useState('none');
   const [repeatWeeks, setRepeatWeeks] = useState('');
+
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!session || session.user.role !== "admin") {
+      router.push("/");
+      return;
+    }
+  }, [session, status, router]);
 
   const toggleDay = (day: string) => {
     setSelectedDays(prev =>

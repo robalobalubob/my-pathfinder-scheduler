@@ -27,3 +27,20 @@ export async function POST(req: Request) {
     data,
   });
 }
+
+export async function GET() {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('*')
+    .order('session_date', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching sessions:', error);
+    return NextResponse.json({ message: 'Error fetching sessions', error }, { status: 500 });
+  }
+
+  return NextResponse.json({ sessions: data });
+}

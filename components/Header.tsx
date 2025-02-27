@@ -11,9 +11,14 @@ export default function Header() {
         <Link href="/" className="mr-4">Home</Link>
         {session && (
           <>
-            <Link href="/availability" className="mr-4">Availability</Link>
-            {session?.user?.role === "gm" && (
-                <Link href="/gm/schedule" className="mr-4">GM Schedule</Link>
+            {session.user.role !== "new" && (
+              <Link href="/availability" className="mr-4">Availability</Link>
+            )}
+            {(session.user.role === "gm" || session.user.role === "admin") && (
+              <Link href="/gm/schedule" className="mr-4">GM Schedule</Link>
+            )}
+            {session.user.role === "admin" && (
+              <Link href="/admin" className="mr-4">Administration</Link>
             )}
           </>
         )}
@@ -24,9 +29,14 @@ export default function Header() {
             Sign Out
           </button>
         ) : (
-          <button onClick={() => signIn()} className="px-4 py-2 bg-secondary rounded">
-            Sign In
-          </button>
+          <>
+            <button onClick={() => signIn()} className="px-4 py-2 bg-secondary rounded mr-4">
+              Sign In
+            </button>
+            <Link href="/register" className="px-4 py-2 bg-secondary rounded">
+              Register
+            </Link>
+          </>
         )}
       </div>
     </header>
