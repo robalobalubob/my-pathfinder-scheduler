@@ -5,7 +5,6 @@ import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "../styles/calendar-overrides.css";
 
-// Dynamically import BigCalendar with SSR disabled.
 const BigCalendar = dynamic(
   async () => {
     const mod = await import("react-big-calendar");

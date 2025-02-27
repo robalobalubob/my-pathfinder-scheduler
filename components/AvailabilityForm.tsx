@@ -3,7 +3,6 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
-
 const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const AvailabilityForm: React.FC = () => {
@@ -18,9 +17,9 @@ const AvailabilityForm: React.FC = () => {
 
   useEffect(() => {
     if (status === "loading") return;
-    if (!session || session.user.role !== "admin") {
+    // For this example, we'll assume only players, gm, or admin can access Availability.
+    if (!session || session.user.role === "new") {
       router.push("/");
-      return;
     }
   }, [session, status, router]);
 
@@ -32,7 +31,6 @@ const AvailabilityForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (timeOption === 'specific') {
       const [startHour, startMin] = timeRange.start.split(':').map(Number);
       const [endHour, endMin] = timeRange.end.split(':').map(Number);
@@ -43,9 +41,7 @@ const AvailabilityForm: React.FC = () => {
         return;
       }
     }
-
     const finalTimeRange = timeOption === 'allDay' ? { start: '00:00', end: '23:59' } : timeRange;
-
     const payload = {
       name,
       selectedDays,
@@ -54,7 +50,6 @@ const AvailabilityForm: React.FC = () => {
       repeatOption,
       repeatWeeks: repeatOption === 'weeks' ? repeatWeeks : null,
     };
-
     const response = await fetch('/api/schedule', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -65,19 +60,15 @@ const AvailabilityForm: React.FC = () => {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="max-w-lg mx-auto p-6 bg-background text-foreground rounded-lg shadow-md space-y-4"
-    >
+    <form onSubmit={handleSubmit} className="max-w-lg mx-auto p-6 bg-background text-foreground rounded-lg shadow-md space-y-4">
       <input
         type="text"
         placeholder="Your Name"
         value={name}
         onChange={(e) => setName(e.target.value)}
         required
-        className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary bg-transparent text-foreground placeholder-gray-400"
+        className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-foreground placeholder-gray-400"
       />
-
       <div>
         {daysOfWeek.map(day => (
           <button
@@ -94,7 +85,6 @@ const AvailabilityForm: React.FC = () => {
           </button>
         ))}
       </div>
-
       <div>
         <label className="flex flex-col">
           <span className="mb-1">Availability:</span>
@@ -108,7 +98,6 @@ const AvailabilityForm: React.FC = () => {
           </select>
         </label>
       </div>
-
       {timeOption === 'specific' && (
         <div className="flex space-x-4">
           <label className="flex flex-col">
@@ -133,7 +122,6 @@ const AvailabilityForm: React.FC = () => {
           </label>
         </div>
       )}
-
       <div>
         <label className="flex flex-col">
           <span className="mb-1">Repeat:</span>
@@ -148,7 +136,6 @@ const AvailabilityForm: React.FC = () => {
           </select>
         </label>
       </div>
-
       {repeatOption === 'weeks' && (
         <div>
           <label className="flex flex-col">
@@ -164,7 +151,6 @@ const AvailabilityForm: React.FC = () => {
           </label>
         </div>
       )}
-
       <button
         type="submit"
         className="w-full bg-primary text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"

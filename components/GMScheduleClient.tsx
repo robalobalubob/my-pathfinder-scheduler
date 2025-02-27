@@ -60,7 +60,6 @@ export default function GMScheduleClient() {
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">GM Scheduling Page</h1>
 
-      {/* Display all availabilities */}
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-2">Player Availabilities</h2>
         {availabilities.length === 0 ? (
@@ -93,7 +92,6 @@ export default function GMScheduleClient() {
         )}
       </section>
 
-      {/* Form to schedule a new session */}
       <section>
         <h2 className="text-xl font-semibold mb-2">Schedule a Session</h2>
         <form

@@ -6,7 +6,7 @@ export default function Header() {
   const { data: session } = useSession();
 
   return (
-    <header className="p-4 bg-primary text-white flex justify-between items-center">
+    <header className="p-4 bg-blue-900 dark:bg-gray-900 text-white flex justify-between items-center">
       <div>
         <Link href="/" className="mr-4">Home</Link>
         {session && (
@@ -25,15 +25,24 @@ export default function Header() {
       </div>
       <div>
         {session ? (
-          <button onClick={() => signOut()} className="px-4 py-2 bg-secondary rounded">
+          <button
+            onClick={() => signOut()}
+            className="px-4 py-2 bg-gray-700 dark:bg-gray-800 rounded"
+          >
             Sign Out
           </button>
         ) : (
           <>
-            <button onClick={() => signIn()} className="px-4 py-2 bg-secondary rounded mr-4">
+            <button
+              onClick={() => signIn()}
+              className="px-4 py-2 bg-red-600 dark:bg-red-900 rounded mr-4"
+            >
               Sign In
             </button>
-            <Link href="/register" className="px-4 py-2 bg-secondary rounded">
+            <Link
+              href="/register"
+              className="px-4 py-2 bg-red-600 dark:bg-red-900 rounded"
+            >
               Register
             </Link>
           </>

@@ -15,7 +15,7 @@ export default function AdminPanel() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch users with role "new"
+  // Fetch users with role "new" and others except admin
   useEffect(() => {
     if (status === "loading") return;
     if (!session || session.user.role !== "admin") {
@@ -23,7 +23,7 @@ export default function AdminPanel() {
       return;
     }
     async function fetchUsers() {
-      const res = await fetch("/api/users?role=new", { cache: "no-store" });
+      const res = await fetch("/api/users?excludeRole=admin", { cache: "no-store" });
       const data = await res.json();
       setUsers(data.users || []);
       setLoading(false);
@@ -86,19 +86,21 @@ export default function AdminPanel() {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => updateUserRole(user.id, "player")}
-                  className="px-4 py-2 bg-green-500 text-white rounded"
+                  className="px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={user.role === "player"}
                 >
                   Make Player
                 </button>
                 <button
                   onClick={() => updateUserRole(user.id, "gm")}
-                  className="px-4 py-2 bg-blue-500 text-white rounded"
+                  className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={user.role === "gm"}
                 >
                   Make GM
                 </button>
                 <button
                   onClick={() => deleteUser(user.id)}
-                  className="px-4 py-2 bg-gray-600 text-white rounded"
+                  className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
                 >
                   Delete User
                 </button>
