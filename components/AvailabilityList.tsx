@@ -60,7 +60,7 @@ export default function AvailabilityList() {
     <div>
       <h2 className="text-2xl font-bold mb-4">My Availabilities</h2>
       {availabilities.length === 0 ? (
-        <p>You haven't submitted any availabilities yet.</p>
+        <p>You haven&apos;t submitted any availabilities yet.</p>
       ) : (
         <ul className="space-y-4">
           {availabilities.map(avail => (
