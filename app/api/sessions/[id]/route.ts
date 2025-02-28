@@ -22,8 +22,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   return NextResponse.json({ message: "Session updated", data });
 }
 
-export async function DELETE(req: Request, context: any): Promise<NextResponse> {
-  const { id } = context.params;
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
