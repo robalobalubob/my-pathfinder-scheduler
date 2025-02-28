@@ -1,73 +1,101 @@
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createClient } from "@/utils/supabase/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { createClient } from '@/utils/supabase/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
-  if (!session || !session.user || session.user.role !== "admin") {
+  if (!session || !session.user || !session.user.id) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
-
+  const { id } = await params;
   const body = await req.json();
-  const { newRole } = body;
-
-  if (!newRole || !["new", "player", "gm"].includes(newRole)) {
-    return NextResponse.json(
-      { message: "Invalid role; cannot assign 'admin' or unsupported role." },
-      { status: 400 }
-    );
-  }
+  const { name, selectedDays, timeOption, timeRange, repeatOption, repeatWeeks } = body;
 
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
+  // Fetch the existing availability to check ownership.
+  const { data: existingAvail, error: fetchError } = await supabase
+    .from("availabilities")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (fetchError || !existingAvail) {
+    return NextResponse.json({ message: "Availability not found", error: fetchError }, { status: 404 });
+  }
+  // If the user is not a GM/admin, they can only modify their own availabilities.
+  if (session.user.role !== "admin" && session.user.role !== "gm" && existingAvail.user_id !== session.user.id) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
+  
+  const payload: any = {};
+  if (name !== undefined) payload.name = name;
+  if (selectedDays !== undefined) payload.selected_days = selectedDays;
+  if (timeOption !== undefined) payload.time_option = timeOption;
+  if (timeRange !== undefined) {
+    payload.start_time = timeRange.start;
+    payload.end_time = timeRange.end;
+  }
+  if (repeatOption !== undefined) payload.repeat_option = repeatOption;
+  if (repeatOption === 'weeks' && repeatWeeks !== undefined) {
+    payload.repeat_weeks = parseInt(repeatWeeks);
+  } else {
+    payload.repeat_weeks = null;
+  }
+  
   const { data, error } = await supabase
-    .from("users")
-    .update({ role: newRole })
-    .eq("id", params.id)
+    .from("availabilities")
+    .update(payload)
+    .eq("id", id)
     .single();
 
   if (error) {
-    console.error("Error updating role:", error);
-    return NextResponse.json(
-      { message: "Error updating role", error },
-      { status: 500 }
-    );
+    console.error("Error updating availability:", error);
+    return NextResponse.json({ message: "Error updating availability", error }, { status: 500 });
   }
-
-  return NextResponse.json({ message: "Role updated successfully", data });
+  return NextResponse.json({ message: "Availability updated successfully", data });
 }
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
-  if (!session || !session.user || session.user.role !== "admin") {
+  if (!session || !session.user || !session.user.id) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
-
+  const { id } = await params;
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
-
-  const { data, error } = await supabase
-    .from("users")
-    .delete()
-    .eq("id", params.id)
+  
+  // Fetch availability to check ownership
+  const { data: existingAvail, error: fetchError } = await supabase
+    .from("availabilities")
+    .select("*")
+    .eq("id", id)
     .single();
-
-  if (error) {
-    console.error("Error deleting user:", error);
-    return NextResponse.json(
-      { message: "Error deleting user", error },
-      { status: 500 }
-    );
+  if (fetchError || !existingAvail) {
+    return NextResponse.json({ message: "Availability not found", error: fetchError }, { status: 404 });
   }
-
-  return NextResponse.json({ message: "User deleted successfully", data });
+  // Check ownership
+  if (session.user.role !== "admin" && session.user.role !== "gm" && existingAvail.user_id !== session.user.id) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
+  
+  const { data, error } = await supabase
+    .from("availabilities")
+    .delete()
+    .eq("id", id)
+    .single();
+  
+  if (error) {
+    console.error("Error deleting availability:", error);
+    return NextResponse.json({ message: "Error deleting availability", error }, { status: 500 });
+  }
+  return NextResponse.json({ message: "Availability deleted successfully", data });
 }

@@ -38,11 +38,11 @@ export const authOptions = {
           return null;
         }
 
-        // Return a user object with role
+        // Return a user object with id, email, and role
         return {
           id: users.id,
           email: users.email,
-          role: users.role, // one of "new", "player", "gm", or "admin"
+          role: users.role,
         };
       },
     }),
@@ -50,12 +50,14 @@ export const authOptions = {
   callbacks: {
     async jwt({ token, user }: { token: any; user?: any }) {
       if (user) {
+        token.id = user.id;
         token.role = user.role;
       }
       return token;
     },
     async session({ session, token }: { session: any; token: any }) {
       if (token && session.user) {
+        session.user.id = token.id;
         session.user.role = token.role;
       }
       return session;

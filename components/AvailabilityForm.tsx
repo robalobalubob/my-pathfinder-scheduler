@@ -31,6 +31,7 @@ const AvailabilityForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+  
     if (timeOption === 'specific') {
       const [startHour, startMin] = timeRange.start.split(':').map(Number);
       const [endHour, endMin] = timeRange.end.split(':').map(Number);
@@ -41,6 +42,7 @@ const AvailabilityForm: React.FC = () => {
         return;
       }
     }
+  
     const finalTimeRange = timeOption === 'allDay' ? { start: '00:00', end: '23:59' } : timeRange;
     const payload = {
       name,
@@ -50,13 +52,20 @@ const AvailabilityForm: React.FC = () => {
       repeatOption,
       repeatWeeks: repeatOption === 'weeks' ? repeatWeeks : null,
     };
+  
     const response = await fetch('/api/schedule', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     const data = await response.json();
-    console.log(data);
+  
+    if (!response.ok) {
+      // If submission failed, alert the error message.
+      alert("Submission failed: " + (data.message || "Unknown error."));
+    } else {
+      alert("Availability submitted successfully!");
+    }
   };
 
   return (
