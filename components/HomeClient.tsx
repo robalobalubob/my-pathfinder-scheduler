@@ -27,7 +27,7 @@ export default function HomeClient() {
           }));
           setEvents(events);
         }
-      } catch (err) {
+      } catch {
         setError("Failed to fetch sessions");
       } finally {
         setLoading(false);

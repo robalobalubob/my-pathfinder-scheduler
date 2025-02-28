@@ -4,12 +4,22 @@ import { createClient } from '@/utils/supabase/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
+type AvailabilityPayload = {
+  name?: string;
+  selected_days?: string[];
+  time_option?: string;
+  start_time?: string;
+  end_time?: string;
+  repeat_option?: string;
+  repeat_weeks?: number | null;
+};
+
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
-  if (!session || !session.user || !session.user.id) {
+  if (!session || !session.user || !(session.user as { id: string }).id) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
@@ -19,7 +29,6 @@ export async function PATCH(
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  // Fetch the existing availability to check ownership.
   const { data: existingAvail, error: fetchError } = await supabase
     .from("availabilities")
     .select("*")
@@ -28,12 +37,13 @@ export async function PATCH(
   if (fetchError || !existingAvail) {
     return NextResponse.json({ message: "Availability not found", error: fetchError }, { status: 404 });
   }
-  // If the user is not a GM/admin, they can only modify their own availabilities.
-  if (session.user.role !== "admin" && session.user.role !== "gm" && existingAvail.user_id !== session.user.id) {
+  if ((session.user as { id: string; role: string }).role !== "admin" &&
+      (session.user as { id: string; role: string }).role !== "gm" &&
+      existingAvail.user_id !== (session.user as { id: string }).id) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
   
-  const payload: any = {};
+  const payload: AvailabilityPayload = {};
   if (name !== undefined) payload.name = name;
   if (selectedDays !== undefined) payload.selected_days = selectedDays;
   if (timeOption !== undefined) payload.time_option = timeOption;
@@ -66,14 +76,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
-  if (!session || !session.user || !session.user.id) {
+  if (!session || !session.user || !(session.user as { id: string }).id) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
   const { id } = await params;
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
   
-  // Fetch availability to check ownership
   const { data: existingAvail, error: fetchError } = await supabase
     .from("availabilities")
     .select("*")
@@ -82,8 +91,9 @@ export async function DELETE(
   if (fetchError || !existingAvail) {
     return NextResponse.json({ message: "Availability not found", error: fetchError }, { status: 404 });
   }
-  // Check ownership
-  if (session.user.role !== "admin" && session.user.role !== "gm" && existingAvail.user_id !== session.user.id) {
+  if ((session.user as { id: string; role: string }).role !== "admin" &&
+      (session.user as { id: string; role: string }).role !== "gm" &&
+      existingAvail.user_id !== (session.user as { id: string }).id) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
   

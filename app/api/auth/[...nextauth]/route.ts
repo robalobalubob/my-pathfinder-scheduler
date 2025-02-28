@@ -1,10 +1,18 @@
-import NextAuth from "next-auth";
+import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
+import type { JWT } from "next-auth/jwt";
+import type { Session } from "next-auth";
 
-export const authOptions = {
+interface CustomUser {
+  id: string;
+  email: string;
+  role: string;
+}
+
+export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
     CredentialsProvider({
@@ -17,7 +25,6 @@ export const authOptions = {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
-
         const cookieStore = await cookies();
         const supabase = createClient(cookieStore);
 
@@ -32,33 +39,31 @@ export const authOptions = {
           return null;
         }
 
-        // Compare the provided password with the hashed password stored in the database.
         const isValid = await bcrypt.compare(credentials.password, users.password_hash);
         if (!isValid) {
           return null;
         }
 
-        // Return a user object with id, email, and role
         return {
-          id: users.id,
-          email: users.email,
-          role: users.role,
-        };
+          id: users.id as string,
+          email: users.email as string,
+          role: users.role as string,
+        } as CustomUser;
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }: { token: any; user?: any }) {
+    async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
-        token.role = user.role;
+        token.id = (user as CustomUser).id;
+        token.role = (user as CustomUser).role;
       }
       return token;
     },
-    async session({ session, token }: { session: any; token: any }) {
+    async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.id;
-        session.user.role = token.role;
+        session.user.id = token.id as string;
+        session.user.role = token.role as string;
       }
       return session;
     },

@@ -34,8 +34,8 @@ const Calendar: React.FC<CalendarProps> = ({ events }) => {
       <BigCalendar
         localizer={localizer}
         events={events}
-        startAccessor={(event: any) => event.start}
-        endAccessor={(event: any) => event.end}
+        startAccessor={(event) => (event as Event).start}
+        endAccessor={(event) => (event as Event).end}
         style={{ height: "500px" }}
         className="text-foreground"
         views={["month", "week", "day", "agenda"]}

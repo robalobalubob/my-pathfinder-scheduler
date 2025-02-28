@@ -15,7 +15,6 @@ export default function AdminPanel() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch users with role "new" and others except admin
   useEffect(() => {
     if (status === "loading") return;
     if (!session || session.user.role !== "admin") {
@@ -31,7 +30,6 @@ export default function AdminPanel() {
     fetchUsers();
   }, [session, status, router]);
 
-  // Function to update a user's role
   const updateUserRole = async (id: string, newRole: string) => {
     const res = await fetch(`/api/users/${id}`, {
       method: "PATCH",
@@ -43,14 +41,12 @@ export default function AdminPanel() {
       alert("Error updating role");
     } else {
       alert("Role updated successfully");
-      // Refresh the user list
       setUsers((prev) =>
         prev.map((user) => (user.id === id ? { ...user, role: newRole } : user))
       );
     }
   };
 
-  // Function to delete a user
   const deleteUser = async (id: string) => {
     if (!confirm("Are you sure you want to delete this user?")) return;
     const res = await fetch(`/api/users/${id}`, {
@@ -61,7 +57,6 @@ export default function AdminPanel() {
       alert("Error deleting user");
     } else {
       alert("User deleted successfully");
-      // Remove the user from the list
       setUsers((prev) => prev.filter((user) => user.id !== id));
     }
   };
