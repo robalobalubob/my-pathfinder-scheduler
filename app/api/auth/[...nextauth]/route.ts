@@ -3,8 +3,6 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
-import type { JWT } from "next-auth/jwt";
-import type { Session } from "next-auth";
 
 interface CustomUser {
   id: string;
