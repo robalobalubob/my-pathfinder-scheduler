@@ -1,6 +1,7 @@
 import "../app/globals.css";
 import Header from "../components/Header";
 import ClientProvider from "../components/ClientProvider";
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -10,6 +11,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Header />
           {children}
         </ClientProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
