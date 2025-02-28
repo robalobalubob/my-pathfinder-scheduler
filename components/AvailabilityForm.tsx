@@ -17,7 +17,6 @@ const AvailabilityForm: React.FC = () => {
 
   useEffect(() => {
     if (status === "loading") return;
-    // For this example, we'll assume only players, gm, or admin can access Availability.
     if (!session || session.user.role === "new") {
       router.push("/");
     }
@@ -61,7 +60,6 @@ const AvailabilityForm: React.FC = () => {
     const data = await response.json();
   
     if (!response.ok) {
-      // If submission failed, alert the error message.
       alert("Submission failed: " + (data.message || "Unknown error."));
     } else {
       alert("Availability submitted successfully!");

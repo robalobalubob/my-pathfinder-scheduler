@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient } from '../../../utils/supabase/server';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/app/api/auth/authOptions';
 
 export async function POST(req: Request) {
   const body = await req.json();
@@ -12,7 +12,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: 'Invalid data' }, { status: 400 });
   }
 
-  // Retrieve the current session to get the user ID
   const session = await getServerSession(authOptions);
   if (!session || !session.user || !session.user.id) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });

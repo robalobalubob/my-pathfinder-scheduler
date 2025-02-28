@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // adjust path as needed
+import { authOptions } from '@/app/api/auth/authOptions';
 
 export async function PATCH(
   req: Request,

@@ -15,8 +15,8 @@ export const createClient = (cookieStore: Awaited<ReturnType<typeof cookies>>) =
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             );
-          } catch {
-            // This might be called from a Server Component.
+          } catch (error) {
+            console.error("Error setting cookies:", error);
           }
         },
       },

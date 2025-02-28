@@ -17,7 +17,6 @@ export async function POST(req: Request) {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  // Check if user already exists
   const { data: existingUser } = await supabase
     .from("users")
     .select("*")
@@ -32,11 +31,9 @@ export async function POST(req: Request) {
     );
   }
 
-  // Hash the password before storing
   const saltRounds = 10;
   const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-  // Insert new user with default role "new"
   const { data, error } = await supabase.from("users").insert([
     {
       email,

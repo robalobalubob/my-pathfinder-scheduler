@@ -28,7 +28,7 @@ export default function GMScheduleClient() {
       router.push("/");
       return;
     }
-    // Fetch availabilities from an API endpoint
+    
     fetch("/api/availabilities")
       .then((res) => res.json())
       .then((data) => {

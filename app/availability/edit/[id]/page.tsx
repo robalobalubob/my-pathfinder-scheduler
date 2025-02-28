@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -17,11 +16,10 @@ interface Availability {
 }
 
 export default function EditAvailabilityPage() {
-  const { id } = useParams(); // dynamic parameter from URL
+  const { id } = useParams();
   const router = useRouter();
   const { data: session, status } = useSession();
   
-  // Form state variables
   const [name, setName] = useState("");
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [timeOption, setTimeOption] = useState<"specific" | "allDay">("specific");
@@ -36,7 +34,6 @@ export default function EditAvailabilityPage() {
       router.push("/");
       return;
     }
-    // Fetch availability data for the current user and this id
     async function fetchAvailability() {
       const res = await fetch("/api/availabilities?user=true", { cache: "no-store" });
       const data = await res.json();

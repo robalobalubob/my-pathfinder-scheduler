@@ -3,7 +3,6 @@ import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 
 export async function GET(req: Request) {
-  // Parse query parameters to filter by role
   const url = new URL(req.url);
   const role = url.searchParams.get("excludeRole");
 
