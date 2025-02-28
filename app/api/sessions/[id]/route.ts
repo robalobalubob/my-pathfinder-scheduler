@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "../../../../utils/supabase/server";
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }): Promise<NextResponse> {
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
   const body = await req.json();
   const { title, session_date } = body;
 
@@ -12,7 +16,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const { data, error } = await supabase
     .from("sessions")
     .update({ title, session_date })
-    .eq("id", params.id);
+    .eq("id", id);
 
   if (error) {
     console.error("Error updating session:", error);
