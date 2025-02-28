@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "../../../../utils/supabase/server";
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: { id: string } }): Promise<NextResponse> {
   const body = await req.json();
   const { title, session_date } = body;
 
@@ -22,7 +22,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   return NextResponse.json({ message: "Session updated", data });
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: { id: string } }): Promise<NextResponse> {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
