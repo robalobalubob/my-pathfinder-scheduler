@@ -62,38 +62,54 @@ export default function AvailabilityList() {
       {availabilities.length === 0 ? (
         <p>You haven&apos;t submitted any availabilities yet.</p>
       ) : (
-        <ul className="space-y-4">
-          {availabilities.map(avail => (
-            <li key={avail.id} className="border p-4 rounded">
-              <p><strong>Name:</strong> {avail.name}</p>
-              <p><strong>Days:</strong> {avail.selected_days.join(", ")}</p>
-              <p>
-                <strong>Time:</strong>{" "}
-                {avail.time_option === "allDay"
-                  ? "All Day"
-                  : `${avail.start_time} to ${avail.end_time}`}
-              </p>
-              <p>
-                <strong>Repeat:</strong> {avail.repeat_option}{" "}
-                {avail.repeat_option === "weeks" && avail.repeat_weeks ? `(${avail.repeat_weeks} weeks)` : ""}
-              </p>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => editAvailability(avail.id)}
-                  className="px-4 py-2 bg-blue-500 text-white rounded"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => deleteAvailability(avail.id)}
-                  className="px-4 py-2 bg-red-500 text-white rounded"
-                >
-                  Delete
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <div className="overflow-x-auto">
+          <table className="min-w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-200 dark:bg-gray-700">
+                <th className="border p-2 text-left">Name</th>
+                <th className="border p-2 text-left">Days</th>
+                <th className="border p-2 text-left">Time</th>
+                <th className="border p-2 text-left">Repeat</th>
+                <th className="border p-2 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {availabilities.map((avail) => (
+                <tr key={avail.id} className="border-b">
+                  <td className="border p-2">{avail.name}</td>
+                  <td className="border p-2">{avail.selected_days.join(", ")}</td>
+                  <td className="border p-2">
+                    {avail.time_option === "allDay"
+                      ? "All Day"
+                      : `${avail.start_time} to ${avail.end_time}`}
+                  </td>
+                  <td className="border p-2">
+                    {avail.repeat_option}
+                    {avail.repeat_option === "weeks" && avail.repeat_weeks
+                      ? ` (${avail.repeat_weeks} weeks)`
+                      : ""}
+                  </td>
+                  <td className="border p-2">
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => editAvailability(avail.id)}
+                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => deleteAvailability(avail.id)}
+                        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

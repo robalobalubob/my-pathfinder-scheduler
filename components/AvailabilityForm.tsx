@@ -63,6 +63,12 @@ const AvailabilityForm: React.FC = () => {
       alert("Submission failed: " + (data.message || "Unknown error."));
     } else {
       alert("Availability submitted successfully!");
+      setName('');
+      setSelectedDays([]);
+      setTimeOption('specific');
+      setTimeRange({ start: '', end: '' });
+      setRepeatOption('none');
+      setRepeatWeeks('');
     }
   };
 

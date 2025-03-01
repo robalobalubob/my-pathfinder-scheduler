@@ -1,7 +1,7 @@
 import AvailabilityPageClient from "../../components/AvailabilityPageClient";
 
 export const metadata = {
-  title: "Scheduling Page",
+  title: "Availability",
 };
 
 export default function AvailabilityPage() {
