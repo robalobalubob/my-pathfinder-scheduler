@@ -10,13 +10,29 @@ import { Button } from "./ui/form/Button";
 import { Alert } from "./ui/feedback/Alert";
 import { Spinner } from "./ui/feedback/Spinner";
 
+// Define interface for availability data
+interface Availability {
+  id: string;
+  user_id: string;
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+  notes?: string;
+  created_at: string;
+  [key: string]: unknown;
+}
+
+interface AvailabilityResponse {
+  availabilities: Availability[];
+}
+
 export default function AvailabilityPageClient() {
   const { requireAuth, user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Get user's availability
-  const { data, error, mutate } = useFetch<{ availabilities: any[] }>(
+  // Get user's availability with proper typing
+  const { data, error, mutate } = useFetch<AvailabilityResponse>(
     user?.id ? `/api/availabilities?userId=${user.id}` : null
   );
   
@@ -78,7 +94,7 @@ export default function AvailabilityPageClient() {
               ) : (
                 <div className="text-center py-8 border border-dashed rounded-md">
                   <p className="text-gray-500 dark:text-gray-400">
-                    You haven't set up any availability yet.
+                    You haven&apos;t set up any availability yet.
                   </p>
                   <p className="text-gray-500 dark:text-gray-400 mt-2">
                     Add your availability so GMs can schedule sessions when you can attend.

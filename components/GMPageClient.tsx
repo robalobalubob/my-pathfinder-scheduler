@@ -98,7 +98,7 @@ export default function GMPageClient() {
           {data?.sessions && data.sessions.length === 0 && (
             <div className="text-center py-8 mt-8 border border-dashed rounded-md">
               <p className="text-gray-500 dark:text-gray-400">
-                You haven't scheduled any sessions yet.
+                You haven&apos;t scheduled any sessions yet.
               </p>
               <Button className="mt-4" onClick={handleNewSession}>
                 Schedule Your First Session

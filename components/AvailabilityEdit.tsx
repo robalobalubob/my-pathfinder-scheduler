@@ -127,7 +127,7 @@ export default function AvailabilityEdit({ availabilityId }: AvailabilityEditPro
       
       toast.success("Availability updated successfully");
       router.push("/availability");
-    } catch (err: any) {
+    } catch (err: { message?: string }) {
       setError(err.message || "Failed to update availability");
       toast.error(err.message || "Failed to update availability");
     } finally {

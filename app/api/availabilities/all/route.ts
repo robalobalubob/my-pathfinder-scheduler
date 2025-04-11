@@ -4,7 +4,7 @@ import { createClient } from '@/utils/supabase/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/authOptions';
 
-export async function GET(req: Request) {
+export async function GET() {
   // Authentication check - only GMs and admins can access this endpoint
   const session = await getServerSession(authOptions);
   if (!session || !session.user || 

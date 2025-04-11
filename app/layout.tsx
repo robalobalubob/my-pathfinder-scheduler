@@ -14,7 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ThemeProvider>
             <ToastProvider />
             <Header />
-            <ErrorBoundary>
+            <ErrorBoundary fallback={<div className="p-4 text-red-500">Something went wrong. Please try refreshing the page.</div>}>
               {children}
             </ErrorBoundary>
             <SpeedInsights />

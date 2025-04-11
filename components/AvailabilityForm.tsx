@@ -91,7 +91,7 @@ export default function AvailabilityForm({ userId, onSubmitSuccess }: Availabili
       if (onSubmitSuccess) {
         onSubmitSuccess();
       }
-    } catch (err: any) {
+    } catch (err: { message?: string }) {
       setError(err.message || "Failed to save availability");
       toast.error(err.message || "Failed to save availability");
     } finally {

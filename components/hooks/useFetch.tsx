@@ -1,7 +1,12 @@
 "use client";
 
-import { useState, useEffect } from 'react';
 import useSWR, { KeyedMutator } from 'swr';
+
+// Define error interface
+interface ApiError extends Error {
+  status?: number;
+  info?: unknown;
+}
 
 // Simple fetch utility with error handling
 const fetcher = async (url: string) => {
@@ -9,7 +14,7 @@ const fetcher = async (url: string) => {
   
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    const error: any = new Error(errorData.message || 'An error occurred while fetching the data.');
+    const error = new Error(errorData.message || 'An error occurred while fetching the data.') as ApiError;
     error.status = res.status;
     error.info = errorData;
     throw error;
@@ -40,7 +45,7 @@ export function useFetch<T>(url: string | null): UseFetchResult<T> {
 }
 
 // Utility functions for data operations
-export async function postData(url: string, data: any) {
+export async function postData<T, R = unknown>(url: string, data: T): Promise<R> {
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -51,7 +56,7 @@ export async function postData(url: string, data: any) {
   
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    const error: any = new Error(errorData.message || 'Failed to post data.');
+    const error = new Error(errorData.message || 'Failed to post data.') as ApiError;
     error.status = res.status;
     error.info = errorData;
     throw error;
@@ -60,7 +65,7 @@ export async function postData(url: string, data: any) {
   return res.json();
 }
 
-export async function updateData(url: string, data: any) {
+export async function updateData<T, R = unknown>(url: string, data: T): Promise<R> {
   const res = await fetch(url, {
     method: 'PATCH',
     headers: {
@@ -71,7 +76,7 @@ export async function updateData(url: string, data: any) {
   
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    const error: any = new Error(errorData.message || 'Failed to update data.');
+    const error = new Error(errorData.message || 'Failed to update data.') as ApiError;
     error.status = res.status;
     error.info = errorData;
     throw error;
@@ -80,14 +85,14 @@ export async function updateData(url: string, data: any) {
   return res.json();
 }
 
-export async function deleteData(url: string) {
+export async function deleteData<R = unknown>(url: string): Promise<R> {
   const res = await fetch(url, {
     method: 'DELETE',
   });
   
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    const error: any = new Error(errorData.message || 'Failed to delete data.');
+    const error = new Error(errorData.message || 'Failed to delete data.') as ApiError;
     error.status = res.status;
     error.info = errorData;
     throw error;

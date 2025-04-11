@@ -6,8 +6,26 @@ import { useRouter } from "next/navigation";
 
 type UserRole = "new" | "player" | "gm" | "admin";
 
+// Define User interface
+interface User {
+  id: string;
+  name?: string;
+  email?: string;
+  role?: UserRole;
+  image?: string;
+  [key: string]: unknown;
+}
+
+// Define login credentials interface
+interface LoginCredentials {
+  email: string;
+  password: string;
+  callbackUrl?: string;
+  [key: string]: unknown;
+}
+
 interface AuthContextType {
-  user: any;
+  user: User | null;
   roles: UserRole[];
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -16,7 +34,7 @@ interface AuthContextType {
   isPlayer: boolean;
   requireAuth: (requiredRoles?: UserRole[]) => boolean;
   logout: () => Promise<void>;
-  login: (credentials?: any) => Promise<void>;
+  login: (credentials?: LoginCredentials) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -83,14 +101,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signOut({ callbackUrl: "/" });
   };
   
-  const login = async (credentials?: any) => {
+  const login = async (credentials?: LoginCredentials) => {
     await signIn(undefined, credentials ? { ...credentials } : undefined);
   };
   
   return (
     <AuthContext.Provider
       value={{
-        user: session?.user || null,
+        user: session?.user as User || null,
         roles,
         isLoading: status === "loading",
         isAuthenticated: !!session,

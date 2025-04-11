@@ -85,7 +85,7 @@ export default function SessionList() {
       
       // Refresh the session list
       mutate();
-    } catch (error: any) {
+    } catch (error: { message?: string }) {
       setFeedbackMessage({
         type: "error",
         text: `Error deleting session: ${error.message || "Unknown error"}`

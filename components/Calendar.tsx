@@ -20,7 +20,16 @@ interface CalendarEvent {
   start: Date;
   end: Date;
   allDay?: boolean;
-  resource?: any;
+  resource?: SessionResource;
+}
+
+// Define the session resource type
+interface SessionResource {
+  id: string;
+  title: string;
+  date: string;
+  duration?: number;
+  [key: string]: unknown;
 }
 
 // Set up the localizer for the calendar

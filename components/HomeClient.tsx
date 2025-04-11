@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useFetch } from "./hooks/useFetch";
 import Calendar from "./Calendar";
@@ -12,13 +12,32 @@ import { Spinner } from "./ui/feedback/Spinner";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+// Define session interface
+interface Session {
+  id: string;
+  title: string;
+  date: string;
+  location?: string;
+  description?: string;
+  duration?: number;
+  max_players?: number;
+  gm_id: string;
+  created_at: string;
+  [key: string]: unknown;
+}
+
+interface SessionsResponse {
+  sessions: Session[];
+  nextSession?: Session;
+}
+
 export default function HomeClient() {
   const router = useRouter();
   const { isAuthenticated, isGM, isAdmin, user } = useAuth();
   const [activeView, setActiveView] = useState<"calendar" | "list">("calendar");
   
-  // Get upcoming sessions
-  const { data, error, isLoading } = useFetch<{ sessions: any[], nextSession?: any }>(
+  // Get upcoming sessions with proper typing
+  const { data, error, isLoading } = useFetch<SessionsResponse>(
     "/api/next-session"
   );
 

@@ -17,7 +17,10 @@ interface FormState<T> {
   isValid: boolean;
 }
 
-export function useForm<T extends Record<string, any>>({
+// Define a generic type for form field values
+type FieldValue = string | number | boolean | Date | null;
+
+export function useForm<T extends Record<string, FieldValue>>({
   initialValues,
   schema,
   onSubmit,
@@ -61,13 +64,12 @@ export function useForm<T extends Record<string, any>>({
 
   // Validate a single field
   const validateField = useCallback(
-    (name: keyof T, value: any) => {
+    (name: keyof T, value: FieldValue) => {
       try {
-        // Fix: Use a schema to validate a specific field
-        // instead of using schema.shape which doesn't exist
-        const fieldSchema = z.object({ [name as string]: schema } as any);
-        fieldSchema.parse({ [name]: value });
-        
+        // Create a partial schema for just this field
+        const partialData = { [name]: value } as unknown as T;
+        schema.parse(partialData);
+
         setFormState((prev) => ({
           ...prev,
           errors: {
@@ -98,9 +100,10 @@ export function useForm<T extends Record<string, any>>({
       >
     ) => {
       const { name, value, type } = e.target;
-      const fieldValue = type === "checkbox" 
-        ? (e.target as HTMLInputElement).checked 
-        : value;
+      const fieldValue: FieldValue =
+        type === "checkbox"
+          ? (e.target as HTMLInputElement).checked
+          : value;
 
       setFormState((prev) => ({
         ...prev,
@@ -120,22 +123,25 @@ export function useForm<T extends Record<string, any>>({
   );
 
   // Set field value programmatically
-  const setFieldValue = useCallback((name: keyof T, value: any) => {
-    setFormState((prev) => ({
-      ...prev,
-      values: {
-        ...prev.values,
-        [name]: value,
-      },
-    }));
-    validateField(name, value);
-  }, [validateField]);
+  const setFieldValue = useCallback(
+    (name: keyof T, value: FieldValue) => {
+      setFormState((prev) => ({
+        ...prev,
+        values: {
+          ...prev.values,
+          [name]: value,
+        },
+      }));
+      validateField(name, value);
+    },
+    [validateField]
+  );
 
   // Handle form submission
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      
+
       setFormState((prev) => ({
         ...prev,
         touched: Object.keys(prev.values).reduce(
@@ -145,7 +151,7 @@ export function useForm<T extends Record<string, any>>({
       }));
 
       const isValid = validateForm();
-      
+
       if (!isValid) return;
 
       setFormState((prev) => ({

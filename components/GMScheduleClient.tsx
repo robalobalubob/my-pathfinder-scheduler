@@ -10,9 +10,30 @@ import { FormField } from "./ui/form/FormField";
 import { Input } from "./ui/form/Input";
 import { Button } from "./ui/form/Button";
 import { DateTimePicker } from "./ui/form/DateTimePicker";
-import { Select } from "./ui/form/Select";
 import { Alert } from "./ui/feedback/Alert";
 import { Spinner } from "./ui/feedback/Spinner";
+
+// Define player availability interface
+interface PlayerAvailability {
+  id: string;
+  user_id: string;
+  user_name?: string;
+  selected_days?: string[];
+  start_time: string;
+  end_time: string;
+  notes?: string;
+  created_at: string;
+  [key: string]: unknown;
+}
+
+interface ApiError {
+  message: string;
+  [key: string]: unknown;
+}
+
+interface AvailabilityData {
+  playerAvailability: PlayerAvailability[];
+}
 
 export default function GMScheduleClient() {
   const router = useRouter();
@@ -37,7 +58,7 @@ export default function GMScheduleClient() {
   const [error, setError] = useState<string | null>(null);
   
   // Fetch player availability data
-  const { data: availabilityData, error: availabilityError } = useFetch<{ playerAvailability: any[] }>(
+  const { data: availabilityData, error: availabilityError } = useFetch<AvailabilityData>(
     isGM || isAdmin ? `/api/availabilities/all` : null
   );
   
@@ -89,7 +110,7 @@ export default function GMScheduleClient() {
       
       toast.success("Session scheduled successfully!");
       router.push("/gm");
-    } catch (error: any) {
+    } catch (error: ApiError) {
       setError(error.message || "Failed to schedule session");
       toast.error(error.message || "Failed to schedule session");
       setIsSubmitting(false);

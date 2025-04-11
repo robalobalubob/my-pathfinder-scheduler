@@ -1,10 +1,10 @@
 "use client";
 
-import React, { Component, ErrorInfo, ReactNode } from "react";
+import { Component, ErrorInfo, ReactNode } from "react";
 
 interface Props {
   children: ReactNode;
-  fallback: ReactNode;
+  fallback?: ReactNode;
 }
 
 interface State {
@@ -12,7 +12,7 @@ interface State {
   error: Error | null;
 }
 
-class ErrorBoundary extends Component<Props, State> {
+class ErrorBoundaryClass extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = {
@@ -34,11 +34,13 @@ class ErrorBoundary extends Component<Props, State> {
   render(): ReactNode {
     if (this.state.hasError) {
       // You can render any custom fallback UI
-      return this.props.fallback;
+      return this.props.fallback || <div>Something went wrong</div>;
     }
 
     return this.props.children;
   }
 }
 
-export default ErrorBoundary;
+// Export both named and default export for compatibility
+export const ErrorBoundary = ErrorBoundaryClass;
+export default ErrorBoundaryClass;
