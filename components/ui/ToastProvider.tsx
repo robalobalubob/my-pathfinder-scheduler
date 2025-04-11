@@ -1,43 +1,58 @@
 "use client";
-import { Toaster } from 'react-hot-toast';
-import { useTheme } from './ThemeProvider';
 
-export function ToastProvider() {
+import { Toaster } from "react-hot-toast";
+import { useTheme } from "./ThemeProvider";
+
+interface ToastProviderProps {
+  children?: React.ReactNode;
+}
+
+export function ToastProvider({ children }: ToastProviderProps) {
   const { theme } = useTheme();
   
-  // Determine if currently in dark mode
-  const isDarkMode = 
-    theme === 'dark' || 
-    (theme === 'system' && 
-      typeof window !== 'undefined' && 
-      window.matchMedia('(prefers-color-scheme: dark)').matches);
-
   return (
-    <Toaster 
-      position="top-right"
-      toastOptions={{
-        duration: 3000,
-        className: 'toast',
-        style: {
-          background: isDarkMode ? 'var(--secondary)' : 'var(--background)',
-          color: isDarkMode ? 'var(--foreground)' : 'var(--foreground)',
-          border: '1px solid',
-          borderColor: isDarkMode ? '#333' : '#ddd',
-          fontSize: '0.875rem',
-        },
-        success: {
-          iconTheme: {
-            primary: '#10B981',
-            secondary: 'white',
+    <>
+      <Toaster
+        position="top-center"
+        reverseOrder={false}
+        gutter={8}
+        containerClassName=""
+        containerStyle={{}}
+        toastOptions={{
+          // Default options for specific types of toasts
+          success: {
+            duration: 3000,
+            style: {
+              background: theme === 'dark' ? '#1F2937' : '#FFFFFF',
+              color: theme === 'dark' ? '#FFFFFF' : '#000000',
+              border: theme === 'dark' ? '1px solid #374151' : '1px solid #E5E7EB',
+            },
           },
-        },
-        error: {
-          iconTheme: {
-            primary: '#EF4444',
-            secondary: 'white',
+          error: {
+            duration: 4000,
+            style: {
+              background: theme === 'dark' ? '#1F2937' : '#FFFFFF',
+              color: theme === 'dark' ? '#FFFFFF' : '#000000',
+              border: theme === 'dark' ? '1px solid #374151' : '1px solid #E5E7EB',
+            },
           },
-        },
-      }}
-    />
+          loading: {
+            duration: Infinity,
+            style: {
+              background: theme === 'dark' ? '#1F2937' : '#FFFFFF',
+              color: theme === 'dark' ? '#FFFFFF' : '#000000',
+              border: theme === 'dark' ? '1px solid #374151' : '1px solid #E5E7EB',
+            },
+          },
+          // Default toast styling
+          style: {
+            background: theme === 'dark' ? '#1F2937' : '#FFFFFF',
+            color: theme === 'dark' ? '#FFFFFF' : '#000000',
+            border: theme === 'dark' ? '1px solid #374151' : '1px solid #E5E7EB',
+          },
+        }}
+      />
+      {children}
+    </>
   );
 }

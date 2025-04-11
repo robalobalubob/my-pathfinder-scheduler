@@ -1,114 +1,143 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
+import { deleteData } from "./hooks/useFetch";
+import { Button } from "./ui/form/Button";
+import { Alert } from "./ui/feedback/Alert";
 
 interface Availability {
-  id: number;
-  name: string;
-  selected_days: string[];
-  time_option: string;
+  id: string;
+  day_of_week: string;
   start_time: string;
   end_time: string;
-  repeat_option: string;
-  repeat_weeks: number | null;
+  notes?: string;
+  user_id: string;
   created_at: string;
 }
 
-export default function AvailabilityList() {
-  const { data: session, status } = useSession();
+interface AvailabilityListProps {
+  availabilities: Availability[];
+  onDelete?: () => void;
+}
+
+export default function AvailabilityList({ availabilities, onDelete }: AvailabilityListProps) {
   const router = useRouter();
-  const [availabilities, setAvailabilities] = useState<Availability[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (status === "loading") return;
-    if (!session || !session.user) {
-      router.push("/");
-      return;
-    }
-    async function fetchAvailabilities() {
-      const res = await fetch("/api/availabilities?user=true", { cache: "no-store" });
-      const data = await res.json();
-      setAvailabilities(data.availabilities || []);
-      setLoading(false);
-    }
-    fetchAvailabilities();
-  }, [session, status, router]);
+  // Format day of week with capitalization 
+  const formatDayOfWeek = (day: string): string => {
+    return day.charAt(0).toUpperCase() + day.slice(1).toLowerCase();
+  };
 
-  const deleteAvailability = async (id: number) => {
+  // Format time from 24h to 12h format
+  const formatTime = (time: string): string => {
+    const [hours, minutes] = time.split(':').map(Number);
+    let period = "AM";
+    
+    let displayHours = hours;
+    if (hours >= 12) {
+      period = "PM";
+      if (hours > 12) {
+        displayHours = hours - 12;
+      }
+    }
+    if (displayHours === 0) {
+      displayHours = 12;
+    }
+    
+    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+  };
+
+  const handleEdit = (availabilityId: string) => {
+    router.push(`/availability/edit/${availabilityId}`);
+  };
+
+  const handleDelete = async (availabilityId: string) => {
     if (!confirm("Are you sure you want to delete this availability?")) return;
-    const res = await fetch(`/api/availabilities/${id}`, {
-      method: "DELETE",
-    });
-    const result = await res.json();
-    if (result.error) {
-      alert("Error deleting availability: " + result.message);
-    } else {
-      alert("Availability deleted successfully");
-      setAvailabilities(prev => prev.filter(avail => avail.id !== id));
+    
+    try {
+      setActionInProgress(availabilityId);
+      setError(null);
+
+      await deleteData(`/api/availabilities/${availabilityId}`);
+      
+      toast.success("Availability deleted successfully");
+      if (onDelete) {
+        onDelete();
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to delete availability");
+      toast.error(err.message || "Failed to delete availability");
+    } finally {
+      setActionInProgress(null);
     }
   };
 
-  const editAvailability = (id: number) => {
-    router.push(`/availability/edit/${id}`);
-  };
-
-  if (loading) return <p>Loading availabilities...</p>;
+  // Sort availabilities by day of week
+  const sortedAvailabilities = [...availabilities].sort((a, b) => {
+    const dayOrder = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    return dayOrder.indexOf(a.day_of_week.toLowerCase()) - dayOrder.indexOf(b.day_of_week.toLowerCase());
+  });
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-4">My Availabilities</h2>
-      {availabilities.length === 0 ? (
-        <p>You haven&apos;t submitted any availabilities yet.</p>
+    <div className="space-y-6">
+      {error && (
+        <Alert 
+          variant="error" 
+          onClose={() => setError(null)}
+        >
+          {error}
+        </Alert>
+      )}
+
+      {sortedAvailabilities.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-gray-500 dark:text-gray-400">No availability set yet</p>
+        </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-200 dark:bg-gray-700">
-                <th className="border p-2 text-left">Name</th>
-                <th className="border p-2 text-left">Days</th>
-                <th className="border p-2 text-left">Time</th>
-                <th className="border p-2 text-left">Repeat</th>
-                <th className="border p-2 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {availabilities.map((avail) => (
-                <tr key={avail.id} className="border-b">
-                  <td className="border p-2">{avail.name}</td>
-                  <td className="border p-2">{avail.selected_days.join(", ")}</td>
-                  <td className="border p-2">
-                    {avail.time_option === "allDay"
-                      ? "All Day"
-                      : `${avail.start_time} to ${avail.end_time}`}
-                  </td>
-                  <td className="border p-2">
-                    {avail.repeat_option}
-                    {avail.repeat_option === "weeks" && avail.repeat_weeks
-                      ? ` (${avail.repeat_weeks} weeks)`
-                      : ""}
-                  </td>
-                  <td className="border p-2">
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => editAvailability(avail.id)}
-                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => deleteAvailability(avail.id)}
-                        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {sortedAvailabilities.map((availability) => (
+            <div 
+              key={availability.id}
+              className="p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm"
+            >
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="font-semibold">{formatDayOfWeek(availability.day_of_week)}</h3>
+                <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800/20 dark:text-blue-300">
+                  {formatTime(availability.start_time)} - {formatTime(availability.end_time)}
+                </div>
+              </div>
+              
+              {availability.notes && (
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                  {availability.notes}
+                </p>
+              )}
+              
+              <div className="flex space-x-2 mt-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleEdit(availability.id)}
+                  disabled={actionInProgress !== null}
+                >
+                  Edit
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => handleDelete(availability.id)}
+                  isLoading={actionInProgress === availability.id}
+                  disabled={actionInProgress !== null}
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -1,155 +1,214 @@
 "use client";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
 import Link from "next/link";
+import { toast } from "react-hot-toast";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "./ui/layout/Card";
+import { FormField } from "./ui/form/FormField";
+import { Input } from "./ui/form/Input";
+import { Button } from "./ui/form/Button";
+import { Alert } from "./ui/feedback/Alert";
 
-interface RegisterFormProps {
-  title: string;
-}
-
-export default function RegisterForm({ title }: RegisterFormProps) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export default function RegisterForm() {
   const router = useRouter();
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [generalError, setGeneralError] = useState<string | null>(null);
 
-  const validateForm = () => {
-    // Reset previous error
-    setErrorMsg("");
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
     
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setErrorMsg("Please enter a valid email address");
-      return false;
+    // Clear error for this field when user changes its value
+    if (errors[name]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
     }
-    
-    // Password validation
-    if (password.length < 8) {
-      setErrorMsg("Password must be at least 8 characters long");
-      return false;
-    }
-    
-    // Confirm password
-    if (password !== confirmPassword) {
-      setErrorMsg("Passwords do not match");
-      return false;
-    }
-    
-    return true;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
     
-    if (!validateForm()) {
+    if (!formData.name.trim()) {
+      newErrors.name = "Name is required";
+    }
+    
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "Email is invalid";
+    }
+    
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    } else if (formData.password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters";
+    }
+    
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setGeneralError(null);
+    
+    if (!validate()) {
       return;
     }
     
+    setIsSubmitting(true);
+    
     try {
-      setIsSubmitting(true);
-      
-      const res = await fetch("/api/register", {
+      const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+        }),
       });
       
-      const data = await res.json();
+      const data = await response.json();
       
-      if (!res.ok) {
+      if (!response.ok) {
         throw new Error(data.message || "Registration failed");
       }
       
       toast.success("Registration successful! Please sign in.");
       router.push("/api/auth/signin");
-      
-    } catch (error) {
-      console.error("Registration error:", error);
-      setErrorMsg(error instanceof Error ? error.message : "Registration failed");
-      toast.error("Registration failed");
+    } catch (error: any) {
+      setGeneralError(error.message || "Registration failed. Please try again.");
+      toast.error(error.message || "Registration failed. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="card max-w-md mx-auto">
-      <h1 className="text-2xl font-bold mb-6 text-center">{title}</h1>
-      
-      {errorMsg && (
-        <div className="alert alert-error mb-4">
-          <p>{errorMsg}</p>
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="form-group">
-          <label htmlFor="email" className="form-label">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            placeholder="your@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+    <Card className="max-w-md mx-auto">
+      <CardHeader>
+        <CardTitle className="text-2xl text-center">Create an Account</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {generalError && (
+          <Alert 
+            variant="error" 
+            className="mb-4"
+            onClose={() => setGeneralError(null)}
+          >
+            {generalError}
+          </Alert>
+        )}
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <FormField
+            label="Name"
+            htmlFor="name"
+            error={errors.name}
             required
-            className="form-input"
-            disabled={isSubmitting}
-          />
-        </div>
-        
-        <div className="form-group">
-          <label htmlFor="password" className="form-label">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            placeholder="Minimum 8 characters"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+          >
+            <Input
+              id="name"
+              name="name"
+              type="text"
+              placeholder="Your name"
+              value={formData.name}
+              onChange={handleChange}
+              isError={!!errors.name}
+              autoComplete="name"
+              disabled={isSubmitting}
+            />
+          </FormField>
+          
+          <FormField
+            label="Email"
+            htmlFor="email"
+            error={errors.email}
             required
-            className="form-input"
-            disabled={isSubmitting}
-          />
-        </div>
-        
-        <div className="form-group">
-          <label htmlFor="confirmPassword" className="form-label">
-            Confirm Password
-          </label>
-          <input
-            id="confirmPassword"
-            type="password"
-            placeholder="Confirm your password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+          >
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="your.email@example.com"
+              value={formData.email}
+              onChange={handleChange}
+              isError={!!errors.email}
+              autoComplete="email"
+              disabled={isSubmitting}
+            />
+          </FormField>
+          
+          <FormField
+            label="Password"
+            htmlFor="password"
+            error={errors.password}
             required
-            className="form-input"
+          >
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="********"
+              value={formData.password}
+              onChange={handleChange}
+              isError={!!errors.password}
+              autoComplete="new-password"
+              disabled={isSubmitting}
+            />
+          </FormField>
+          
+          <FormField
+            label="Confirm Password"
+            htmlFor="confirmPassword"
+            error={errors.confirmPassword}
+            required
+          >
+            <Input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              placeholder="********"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              isError={!!errors.confirmPassword}
+              autoComplete="new-password"
+              disabled={isSubmitting}
+            />
+          </FormField>
+          
+          <Button
+            type="submit"
+            className="w-full"
+            isLoading={isSubmitting}
             disabled={isSubmitting}
-          />
-        </div>
-        
-        <button
-          type="submit"
-          className="btn btn-primary w-full"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? "Registering..." : "Register"}
-        </button>
-        
-        <div className="text-center mt-4 text-sm">
-          Already have an account?{" "}
-          <Link href="/api/auth/signin" className="text-primary hover:underline">
-            Sign In
-          </Link>
-        </div>
-      </form>
-    </div>
+          >
+            Register
+          </Button>
+        </form>
+      </CardContent>
+      <CardFooter className="flex justify-center text-sm">
+        Already have an account?{" "}
+        <Link href="/api/auth/signin" className="ml-1 text-primary hover:underline">
+          Sign in
+        </Link>
+      </CardFooter>
+    </Card>
   );
 }

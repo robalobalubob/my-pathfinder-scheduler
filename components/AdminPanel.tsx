@@ -1,166 +1,285 @@
 "use client";
-import { useSession } from "next-auth/react";
+
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
+import { useAuth } from "./hooks/useAuth";
+import { useFetch, updateData, deleteData } from "./hooks/useFetch";
+import { Card, CardHeader, CardTitle, CardContent } from "./ui/layout/Card";
+import { Button } from "./ui/form/Button";
+import { Input } from "./ui/form/Input";
+import { Select, SelectOption } from "./ui/form/Select";
+import { Alert } from "./ui/feedback/Alert";
+import { Spinner } from "./ui/feedback/Spinner";
+import { FormField } from "./ui/form/FormField";
 
 interface User {
   id: string;
+  name: string;
   email: string;
   role: string;
+  created_at: string;
+}
+
+interface UsersResponse {
+  users: User[];
 }
 
 export default function AdminPanel() {
-  const { data: session, status } = useSession();
   const router = useRouter();
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { requireAuth, isAdmin } = useAuth();
+  const [activeTab, setActiveTab] = useState<"users" | "sessions">("users");
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
+  // Get users data
+  const { 
+    data, 
+    error, 
+    isLoading: isFetching, 
+    mutate 
+  } = useFetch<UsersResponse>(
+    isAdmin ? '/api/users' : null
+  );
+  
   useEffect(() => {
-    if (status === "loading") return;
-    if (!session || session.user.role !== "admin") {
-      toast.error("You don't have permission to view this page");
-      router.push("/");
-      return;
-    }
+    // Require admin authentication
+    const hasAccess = requireAuth(['admin']);
+    if (!hasAccess) return;
     
-    async function fetchUsers() {
-      try {
-        setLoading(true);
-        const res = await fetch("/api/users?excludeRole=admin", { cache: "no-store" });
-        if (!res.ok) {
-          throw new Error("Failed to fetch users");
-        }
-        const data = await res.json();
-        setUsers(data.users || []);
-      } catch (error) {
-        console.error("Error fetching users:", error);
-        toast.error("Failed to load users");
-      } finally {
-        setLoading(false);
-      }
+    // Set loading state based on data/error
+    if (data || error || !isAdmin) {
+      setIsLoading(false);
     }
-    
-    fetchUsers();
-  }, [session, status, router]);
+  }, [requireAuth, data, error, isAdmin]);
 
-  const updateUserRole = async (id: string, newRole: string) => {
+  const handleUpdateUserRole = async (userId: string, newRole: string) => {
     if (actionInProgress) return;
     
     try {
-      setActionInProgress(id);
-      const res = await fetch(`/api/users/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newRole }),
-      });
+      setActionInProgress(userId);
       
-      const result = await res.json();
-      if (!res.ok || result.error) {
-        throw new Error(result.message || "Failed to update role");
-      }
+      await updateData(`/api/users/${userId}`, { role: newRole });
       
-      toast.success(`Role updated to ${newRole} successfully`);
-      setUsers((prev) =>
-        prev.map((user) => (user.id === id ? { ...user, role: newRole } : user))
-      );
-    } catch (error) {
-      console.error("Error updating role:", error);
-      toast.error(`Error updating role: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast.success("User role updated successfully");
+      mutate(); // Refresh data
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update user role");
     } finally {
       setActionInProgress(null);
+      setEditingUser(null);
     }
   };
 
-  const deleteUser = async (id: string, email: string) => {
-    if (actionInProgress) return;
-    
-    if (!confirm(`Are you sure you want to delete user ${email}? This action cannot be undone.`)) {
+  const handleDeleteUser = async (userId: string) => {
+    if (actionInProgress || !window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
       return;
     }
     
     try {
-      setActionInProgress(id);
-      const res = await fetch(`/api/users/${id}`, {
-        method: "DELETE",
-      });
+      setActionInProgress(userId);
       
-      const result = await res.json();
-      if (!res.ok || result.error) {
-        throw new Error(result.message || "Failed to delete user");
-      }
+      await deleteData(`/api/users/${userId}`);
       
       toast.success("User deleted successfully");
-      setUsers((prev) => prev.filter((user) => user.id !== id));
-    } catch (error) {
-      console.error("Error deleting user:", error);
-      toast.error(`Error deleting user: ${error instanceof Error ? error.message : "Unknown error"}`);
+      mutate(); // Refresh data
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete user");
     } finally {
       setActionInProgress(null);
     }
   };
 
-  if (loading) return <p className="text-center py-8">Loading users...</p>;
+  // Filter users based on search query
+  const filteredUsers = data?.users.filter(user => {
+    if (!searchQuery) return true;
+    
+    const query = searchQuery.toLowerCase();
+    return (
+      user.name.toLowerCase().includes(query) ||
+      user.email.toLowerCase().includes(query) ||
+      user.role.toLowerCase().includes(query)
+    );
+  });
+  
+  const roleOptions: SelectOption[] = [
+    { value: "new", label: "New User" },
+    { value: "player", label: "Player" },
+    { value: "gm", label: "Game Master" },
+    { value: "admin", label: "Admin" },
+  ];
+
+  if (isLoading || isFetching) {
+    return (
+      <div className="flex justify-center p-8">
+        <Spinner size="lg" label="Loading admin panel..." />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Alert variant="error">
+        You do not have permission to access the admin panel.
+      </Alert>
+    );
+  }
 
   return (
-    <div className="space-y-8">
-      <h2 className="text-xl font-bold mb-4">Admin Panel: Manage User Roles</h2>
-      
-      {users.length === 0 ? (
-        <div className="text-center py-8 bg-gray-100 dark:bg-gray-800 rounded-lg">
-          <p className="text-lg">No users to manage</p>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {users.map((user) => (
-            <div 
-              key={user.id} 
-              className="border p-4 rounded-lg shadow-sm bg-background hover:shadow-md transition-shadow"
+    <div className="max-w-6xl mx-auto p-4">
+      <Card>
+        <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between">
+          <CardTitle>Admin Panel</CardTitle>
+          <div className="flex space-x-4 mt-4 md:mt-0">
+            <Button 
+              variant="outline" 
+              className={activeTab === "users" ? "bg-gray-100 dark:bg-gray-800" : ""}
+              onClick={() => setActiveTab("users")}
             >
-              <p className="mb-1">
-                <span className="font-semibold">Email:</span> {user.email}
-              </p>
-              <p className="mb-3">
-                <span className="font-semibold">Current Role:</span>{" "}
-                <span className={`px-2 py-0.5 rounded text-sm ${
-                  user.role === "player" 
-                    ? "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100" 
-                    : user.role === "gm" 
-                      ? "bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100"
-                      : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-                }`}>
-                  {user.role}
-                </span>
-              </p>
+              Manage Users
+            </Button>
+            <Button 
+              variant="outline"
+              className={activeTab === "sessions" ? "bg-gray-100 dark:bg-gray-800" : ""}
+              onClick={() => setActiveTab("sessions")}
+            >
+              Manage Sessions
+            </Button>
+          </div>
+        </CardHeader>
+        
+        <CardContent>
+          {error && (
+            <Alert variant="error" className="mb-6">
+              Failed to load data. Please try again.
+            </Alert>
+          )}
+
+          {activeTab === "users" && (
+            <div>
+              <div className="mb-6">
+                <Input
+                  placeholder="Search users..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  leftIcon={
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                      <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
+                    </svg>
+                  }
+                />
+              </div>
               
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => updateUserRole(user.id, "player")}
-                  className="px-3 py-1.5 bg-green-500 text-white rounded text-sm font-medium hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={user.role === "player" || actionInProgress === user.id}
-                >
-                  Make Player
-                </button>
-                <button
-                  onClick={() => updateUserRole(user.id, "gm")}
-                  className="px-3 py-1.5 bg-blue-500 text-white rounded text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={user.role === "gm" || actionInProgress === user.id}
-                >
-                  Make GM
-                </button>
-                <button
-                  onClick={() => deleteUser(user.id, user.email)}
-                  className="px-3 py-1.5 bg-red-500 text-white rounded text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={actionInProgress === user.id}
-                >
-                  Delete User
-                </button>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead>
+                    <tr>
+                      <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
+                      <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
+                      <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
+                      <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Joined</th>
+                      <th className="px-6 py-3 bg-gray-50 dark:bg-gray-800 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+                    {filteredUsers?.map((user) => (
+                      <tr key={user.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">{user.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">{user.email}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {editingUser?.id === user.id ? (
+                            <Select
+                              options={roleOptions}
+                              value={editingUser.role}
+                              onChange={(e) => {
+                                setEditingUser({
+                                  ...editingUser,
+                                  role: e.target.value
+                                });
+                              }}
+                            />
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+                              {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                          {editingUser?.id === user.id ? (
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEditingUser(null)}
+                                disabled={actionInProgress === user.id}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                isLoading={actionInProgress === user.id}
+                                disabled={actionInProgress !== null}
+                                onClick={() => handleUpdateUserRole(user.id, editingUser.role)}
+                              >
+                                Save
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEditingUser({ ...user })}
+                                disabled={actionInProgress !== null}
+                              >
+                                Edit Role
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                isLoading={actionInProgress === user.id}
+                                disabled={actionInProgress !== null}
+                                onClick={() => handleDeleteUser(user.id)}
+                              >
+                                Delete
+                              </Button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    
+                    {filteredUsers && filteredUsers.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                          No users found matching your search.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          )}
+
+          {activeTab === "sessions" && (
+            <div className="text-center py-12">
+              <h3 className="text-lg font-semibold mb-2">Session Management</h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-6">
+                As an admin, you can view and manage all sessions from the calendar.
+              </p>
+              <Button onClick={() => router.push("/")}>
+                Go to Calendar
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

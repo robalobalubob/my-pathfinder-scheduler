@@ -1,210 +1,270 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 
-interface Availability {
-  id: number;
-  name: string;
-  selected_days: string[];
-  time_option: string;
-  start_time: string;
-  end_time: string;
-  repeat_option: string;
-  repeat_weeks: number | null;
-  created_at: string;
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
+import { useAuth } from "./hooks/useAuth";
+import { useFetch, updateData } from "./hooks/useFetch";
+import { Card, CardHeader, CardTitle, CardContent } from "./ui/layout/Card";
+import { FormField } from "./ui/form/FormField";
+import { Select, SelectOption } from "./ui/form/Select";
+import { Button } from "./ui/form/Button";
+import { Alert } from "./ui/feedback/Alert";
+import { Spinner } from "./ui/feedback/Spinner";
+
+interface AvailabilityEditProps {
+  availabilityId: string;
 }
 
-export default function EditAvailabilityPage() {
-  const { id } = useParams();
+interface Availability {
+  id: string;
+  day_of_week: string;
+  start_time: string;
+  end_time: string;
+  notes: string;
+  user_id: string;
+}
+
+interface AvailabilityResponse {
+  availability: Availability;
+}
+
+export default function AvailabilityEdit({ availabilityId }: AvailabilityEditProps) {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { requireAuth, user } = useAuth();
+  const [formData, setFormData] = useState({
+    day_of_week: "",
+    start_time: "",
+    end_time: "",
+    notes: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
-  const [name, setName] = useState("");
-  const [selectedDays, setSelectedDays] = useState<string[]>([]);
-  const [timeOption, setTimeOption] = useState<"specific" | "allDay">("specific");
-  const [timeRange, setTimeRange] = useState({ start: "", end: "" });
-  const [repeatOption, setRepeatOption] = useState("none");
-  const [repeatWeeks, setRepeatWeeks] = useState("");
-  const [loading, setLoading] = useState(true);
-
+  // Fetch availability data using our custom hook
+  const { 
+    data, 
+    error: fetchError, 
+    isLoading 
+  } = useFetch<AvailabilityResponse>(
+    `/api/availabilities/${availabilityId}`
+  );
+  
+  // Ensure the user is authorized to edit this availability
   useEffect(() => {
-    if (status === "loading") return;
-    if (!session || !session.user) {
-      router.push("/");
-      return;
-    }
-    async function fetchAvailability() {
-      const res = await fetch("/api/availabilities?user=true", { cache: "no-store" });
-      const data = await res.json();
-      const avail: Availability | undefined = data.availabilities.find(
-        (item: Availability) => item.id.toString() === id
-      );
-      if (!avail) {
-        alert("Availability not found or you are not authorized to edit it.");
+    // Require authentication
+    const hasAccess = requireAuth();
+    if (!hasAccess) return;
+    
+    // Check if the availability belongs to the user
+    if (data?.availability) {
+      if (data.availability.user_id !== user?.id) {
+        toast.error("You don't have permission to edit this availability");
         router.push("/availability");
-        return;
       }
-      setName(avail.name);
-      setSelectedDays(avail.selected_days);
-      setTimeOption(avail.time_option as "specific" | "allDay");
-      setTimeRange({ start: avail.start_time, end: avail.end_time });
-      setRepeatOption(avail.repeat_option);
-      setRepeatWeeks(avail.repeat_weeks ? avail.repeat_weeks.toString() : "");
-      setLoading(false);
     }
-    fetchAvailability();
-  }, [id, session, status, router]);
+  }, [data, requireAuth, router, user]);
+  
+  // Populate form with availability data when available
+  useEffect(() => {
+    if (data?.availability) {
+      setFormData({
+        day_of_week: data.availability.day_of_week,
+        start_time: data.availability.start_time,
+        end_time: data.availability.end_time,
+        notes: data.availability.notes || "",
+      });
+    }
+  }, [data]);
 
-  const toggleDay = (day: string) => {
-    setSelectedDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
-    );
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const validateTimeFormat = (time: string): boolean => {
+    // Time should be in the format "HH:MM"
+    const regex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    return regex.test(time);
+  };
+
+  const validateTimeRange = (start: string, end: string): boolean => {
+    // Check if end time is after start time
+    const startTime = start.split(":").map(Number);
+    const endTime = end.split(":").map(Number);
+
+    if (startTime[0] > endTime[0]) {
+      return false;
+    }
+    if (startTime[0] === endTime[0] && startTime[1] >= endTime[1]) {
+      return false;
+    }
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (timeOption === "specific") {
-      const [startHour, startMin] = timeRange.start.split(":").map(Number);
-      const [endHour, endMin] = timeRange.end.split(":").map(Number);
-      const startTotal = startHour * 60 + startMin;
-      const endTotal = endHour * 60 + endMin;
-      if (startTotal >= endTotal) {
-        alert("Start time must be before end time.");
-        return;
+    setError(null);
+    setIsSubmitting(true);
+    
+    try {
+      // Validate required fields
+      if (!formData.day_of_week || !formData.start_time || !formData.end_time) {
+        throw new Error("Day, start time, and end time are required");
       }
-    }
-    const finalTimeRange =
-      timeOption === "allDay" ? { start: "00:00", end: "23:59" } : timeRange;
-    const payload = {
-      name,
-      selectedDays,
-      timeOption,
-      timeRange: finalTimeRange,
-      repeatOption,
-      repeatWeeks: repeatOption === "weeks" ? repeatWeeks : null,
-    };
-
-    const res = await fetch(`/api/availabilities/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const result = await res.json();
-    if (!res.ok) {
-      alert("Update failed: " + (result.message || "Unknown error."));
-    } else {
-      alert("Availability updated successfully!");
-      router.push("/availability?user=true");
+      
+      // Validate time format
+      if (!validateTimeFormat(formData.start_time) || !validateTimeFormat(formData.end_time)) {
+        throw new Error("Times must be in 24-hour format (HH:MM)");
+      }
+      
+      // Validate time range
+      if (!validateTimeRange(formData.start_time, formData.end_time)) {
+        throw new Error("End time must be after start time");
+      }
+      
+      await updateData(`/api/availabilities/${availabilityId}`, formData);
+      
+      toast.success("Availability updated successfully");
+      router.push("/availability");
+    } catch (err: any) {
+      setError(err.message || "Failed to update availability");
+      toast.error(err.message || "Failed to update availability");
+    } finally {
+      setIsSubmitting(false);
     }
   };
+  
+  const dayOptions: SelectOption[] = [
+    { value: "monday", label: "Monday" },
+    { value: "tuesday", label: "Tuesday" },
+    { value: "wednesday", label: "Wednesday" },
+    { value: "thursday", label: "Thursday" },
+    { value: "friday", label: "Friday" },
+    { value: "saturday", label: "Saturday" },
+    { value: "sunday", label: "Sunday" },
+  ];
 
-  if (loading) return <p>Loading...</p>;
+  if (isLoading) {
+    return (
+      <Card className="max-w-md mx-auto">
+        <CardContent className="flex items-center justify-center p-8">
+          <Spinner size="lg" label="Loading availability..." />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <Alert variant="error" className="max-w-md mx-auto">
+        Failed to load availability. Please try again later.
+      </Alert>
+    );
+  }
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Edit Availability</h1>
-      <form
-        onSubmit={handleSubmit}
-        className="max-w-lg mx-auto p-6 bg-background text-foreground rounded-lg shadow-md space-y-4"
-      >
-        <input
-          type="text"
-          placeholder="Your Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-foreground placeholder-gray-400"
-        />
-        <div>
-          {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
-            <button
-              type="button"
-              key={day}
-              onClick={() => toggleDay(day)}
-              className={`px-3 py-1 m-1 rounded transition-colors duration-200 ${
-                selectedDays.includes(day)
-                  ? "bg-green-500 text-white"
-                  : "bg-gray-200 dark:bg-gray-700 text-foreground"
-              }`}
+    <Card className="max-w-md mx-auto">
+      <CardHeader>
+        <CardTitle>Edit Availability</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {error && (
+          <Alert 
+            variant="error" 
+            className="mb-6"
+            onClose={() => setError(null)}
+          >
+            {error}
+          </Alert>
+        )}
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <FormField
+            label="Day of Week"
+            htmlFor="day_of_week"
+            required
+          >
+            <Select
+              id="day_of_week"
+              name="day_of_week"
+              value={formData.day_of_week}
+              onChange={handleChange}
+              options={dayOptions}
+              required
+            />
+          </FormField>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              label="Start Time (24hr format)"
+              htmlFor="start_time"
+              required
+              description="e.g. 18:00 for 6 PM"
             >
-              {day.slice(0, 3)}
-            </button>
-          ))}
-        </div>
-        <div>
-          <label className="flex flex-col">
-            <span className="mb-1">Availability:</span>
-            <select
-              value={timeOption}
-              onChange={(e) => setTimeOption(e.target.value as "specific" | "allDay")}
-              className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-foreground"
-            >
-              <option value="specific">Specific Times</option>
-              <option value="allDay">All Day</option>
-            </select>
-          </label>
-        </div>
-        {timeOption === "specific" && (
-          <div className="flex space-x-4">
-            <label className="flex flex-col">
-              <span className="mb-1">Start Time:</span>
               <input
                 type="time"
-                value={timeRange.start}
-                onChange={(e) => setTimeRange({ ...timeRange, start: e.target.value })}
+                id="start_time"
+                name="start_time"
+                value={formData.start_time}
+                onChange={handleChange}
+                className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 required
-                className="border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-foreground"
               />
-            </label>
-            <label className="flex flex-col">
-              <span className="mb-1">End Time:</span>
+            </FormField>
+
+            <FormField
+              label="End Time (24hr format)"
+              htmlFor="end_time"
+              required
+              description="e.g. 22:00 for 10 PM"
+            >
               <input
                 type="time"
-                value={timeRange.end}
-                onChange={(e) => setTimeRange({ ...timeRange, end: e.target.value })}
+                id="end_time"
+                name="end_time"
+                value={formData.end_time}
+                onChange={handleChange}
+                className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 required
-                className="border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-foreground"
               />
-            </label>
+            </FormField>
           </div>
-        )}
-        <div>
-          <label className="flex flex-col">
-            <span className="mb-1">Repeat:</span>
-            <select
-              value={repeatOption}
-              onChange={(e) => setRepeatOption(e.target.value)}
-              className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-foreground"
+
+          <FormField
+            label="Notes (Optional)"
+            htmlFor="notes"
+            description="Any additional information about your availability"
+          >
+            <textarea
+              id="notes"
+              name="notes"
+              value={formData.notes}
+              onChange={handleChange}
+              className="w-full min-h-[100px] px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              placeholder="Any notes about this time slot"
+            />
+          </FormField>
+          
+          <div className="flex justify-between pt-4">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={() => router.push("/availability")}
+              disabled={isSubmitting}
             >
-              <option value="none">No Repeat</option>
-              <option value="weeks">For a set number of weeks</option>
-              <option value="forever">Repeat indefinitely</option>
-            </select>
-          </label>
-        </div>
-        {repeatOption === "weeks" && (
-          <div>
-            <label className="flex flex-col">
-              <span className="mb-1">Number of Weeks:</span>
-              <input
-                type="number"
-                min="1"
-                value={repeatWeeks}
-                onChange={(e) => setRepeatWeeks(e.target.value)}
-                required
-                className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-foreground"
-              />
-            </label>
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              isLoading={isSubmitting}
+              disabled={isSubmitting}
+            >
+              Update Availability
+            </Button>
           </div>
-        )}
-        <button
-          type="submit"
-          className="w-full bg-primary text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
-        >
-          Save Changes
-        </button>
-      </form>
-    </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

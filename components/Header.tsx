@@ -1,122 +1,179 @@
 "use client";
-import { signIn, signOut, useSession } from "next-auth/react";
-import Link from "next/link";
+
 import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuth } from "./hooks/useAuth";
 import { ThemeToggle } from "./ui/ThemeToggle";
 
 export default function Header() {
-  const { data: session } = useSession();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const { user, isAuthenticated, logout, isAdmin, isGM } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Navigation links based on role
+  const navLinks = [
+    { href: "/", label: "Home", show: true },
+    { href: "/availability", label: "My Availability", show: isAuthenticated },
+    { href: "/gm/schedule", label: "Schedule Session", show: isGM || isAdmin },
+    { href: "/admin", label: "Admin Panel", show: isAdmin },
+  ];
+
+  const isActive = (path: string) => {
+    return pathname === path;
+  };
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
 
   return (
-    <header className="p-4 bg-blue-900 dark:bg-gray-900 text-white">
-      <div className="container mx-auto flex flex-wrap justify-between items-center">
-        {/* Logo and brand */}
-        <div className="flex items-center">
-          <Link href="/" className="text-xl font-bold mr-4">
-            Pathfinder Scheduler
+    <header className="sticky top-0 z-40 w-full border-b bg-background">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <div className="flex items-center gap-10">
+          <Link href="/" className="flex items-center gap-2">
+            <h1 className="text-xl font-bold">Pathfinder Scheduler</h1>
           </Link>
-        </div>
-
-        {/* Mobile menu button */}
-        <button 
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="md:hidden p-2 rounded hover:bg-blue-800 dark:hover:bg-gray-800 focus:outline-none"
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-6 h-6">
-            {menuOpen ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
-            )}
-          </svg>
-        </button>
-
-        {/* Navigation and auth buttons */}
-        <nav className={`${menuOpen ? 'block' : 'hidden'} md:flex w-full md:w-auto mt-4 md:mt-0 items-center`}>
-          <div className="flex flex-col md:flex-row md:mr-8 space-y-2 md:space-y-0 md:space-x-4">
-            <Link 
-              href="/" 
-              className="px-2 py-1 hover:bg-blue-800 dark:hover:bg-gray-800 rounded transition-colors"
-              onClick={() => setMenuOpen(false)}
-            >
-              Home
-            </Link>
-            
-            {session && (
-              <>
-                {session.user.role !== "new" && (
-                  <Link 
-                    href="/availability" 
-                    className="px-2 py-1 hover:bg-blue-800 dark:hover:bg-gray-800 rounded transition-colors"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    Availability
-                  </Link>
-                )}
-                
-                {(session.user.role === "gm" || session.user.role === "admin") && (
-                  <Link 
-                    href="/gm/schedule" 
-                    className="px-2 py-1 hover:bg-blue-800 dark:hover:bg-gray-800 rounded transition-colors"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    GM Schedule
-                  </Link>
-                )}
-                
-                {session.user.role === "admin" && (
-                  <Link 
-                    href="/admin" 
-                    className="px-2 py-1 hover:bg-blue-800 dark:hover:bg-gray-800 rounded transition-colors"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    Admin Panel
-                  </Link>
-                )}
-              </>
-            )}
-          </div>
           
-          <div className="flex flex-col md:flex-row md:items-center mt-4 md:mt-0 space-y-2 md:space-y-0 md:space-x-3">
-            {/* Theme toggle in header */}
-            <div className="md:mr-2 mt-2 md:mt-0">
-              <ThemeToggle />
-            </div>
-            
-            {session ? (
-              <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-3">
-                <span className="px-2 py-1 text-sm text-gray-300">
-                  {session.user.email || "User"}
-                </span>
-                <button
-                  onClick={() => signOut()}
-                  className="btn btn-secondary"
-                >
-                  Sign Out
-                </button>
-              </div>
-            ) : (
-              <>
-                <button
-                  onClick={() => signIn()}
-                  className="btn btn-primary"
-                >
-                  Sign In
-                </button>
+          {/* Desktop navigation */}
+          <nav className="hidden md:flex items-center gap-6">
+            {navLinks
+              .filter((link) => link.show)
+              .map((link) => (
                 <Link
-                  href="/register"
-                  className="btn btn-primary text-center"
-                  onClick={() => setMenuOpen(false)}
+                  key={link.href}
+                  href={link.href}
+                  className={`text-sm font-medium transition-colors hover:text-primary ${
+                    isActive(link.href)
+                      ? "text-primary"
+                      : "text-foreground/70"
+                  }`}
                 >
-                  Register
+                  {link.label}
                 </Link>
+              ))}
+          </nav>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <ThemeToggle />
+          
+          {/* User menu for desktop */}
+          {isAuthenticated ? (
+            <div className="hidden md:flex items-center gap-4">
+              <span className="text-sm font-medium">
+                {user?.name || user?.email || "User"}
+              </span>
+              <button
+                onClick={() => logout()}
+                className="text-sm font-medium text-foreground/70 hover:text-primary"
+              >
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/api/auth/signin"
+              className="hidden md:inline-flex text-sm font-medium hover:text-primary"
+            >
+              Sign in
+            </Link>
+          )}
+          
+          {/* Mobile menu button */}
+          <button
+            className="md:hidden inline-flex items-center justify-center rounded-md p-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+            onClick={toggleMobileMenu}
+            aria-expanded={mobileMenuOpen}
+          >
+            <span className="sr-only">Open main menu</span>
+            {mobileMenuOpen ? (
+              // X icon
+              <svg
+                className="h-6 w-6"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            ) : (
+              // Hamburger icon
+              <svg
+                className="h-6 w-6"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            )}
+          </button>
+        </div>
+      </div>
+      
+      {/* Mobile menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-background border-t px-2 pb-4 pt-2">
+          <div className="space-y-1">
+            {navLinks
+              .filter((link) => link.show)
+              .map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`block px-3 py-2 rounded-md text-base font-medium ${
+                    isActive(link.href)
+                      ? "bg-gray-100 dark:bg-gray-800 text-primary"
+                      : "text-foreground/70 hover:bg-gray-50 dark:hover:bg-gray-900"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              
+            {isAuthenticated ? (
+              <>
+                <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
+                  Signed in as: {user?.name || user?.email || "User"}
+                </div>
+                <button
+                  onClick={() => {
+                    logout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-foreground/70 hover:bg-gray-50 dark:hover:bg-gray-900"
+                >
+                  Sign out
+                </button>
               </>
+            ) : (
+              <Link
+                href="/api/auth/signin"
+                className="block px-3 py-2 rounded-md text-base font-medium text-foreground/70 hover:bg-gray-50 dark:hover:bg-gray-900"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Sign in
+              </Link>
             )}
           </div>
-        </nav>
-      </div>
+        </div>
+      )}
     </header>
   );
 }
