@@ -64,7 +64,7 @@ export default function AdminPanel() {
       
       toast.success("User role updated successfully");
       mutate(); // Refresh data
-    } catch (error: any) {
+    } catch (error: { message?: string }) {
       toast.error(error.message || "Failed to update user role");
     } finally {
       setActionInProgress(null);
@@ -84,7 +84,7 @@ export default function AdminPanel() {
       
       toast.success("User deleted successfully");
       mutate(); // Refresh data
-    } catch (error: any) {
+    } catch (error: { message?: string }) {
       toast.error(error.message || "Failed to delete user");
     } finally {
       setActionInProgress(null);

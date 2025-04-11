@@ -105,7 +105,7 @@ export default function GMScheduleClient() {
       
       toast.success("Session scheduled successfully!");
       router.push("/gm");
-    } catch (error: any) {
+    } catch (error: { message?: string }) {
       setError(error.message || "Failed to schedule session");
       toast.error(error.message || "Failed to schedule session");
       setIsSubmitting(false);
