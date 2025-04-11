@@ -34,12 +34,13 @@ export const authOptions: NextAuthOptions = {
           .single();
 
         if (error || !users) {
-          return null;
+          console.error('Error fetching user:', error);
+          throw new Error('Invalid Email');
         }
 
         const isValid = await bcrypt.compare(credentials.password, users.password_hash);
         if (!isValid) {
-          return null;
+          throw new Error('Invalid Password');
         }
 
         return {

@@ -2,6 +2,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
+import { toast } from "react-hot-toast";
 
 interface Availability {
   id: number;
@@ -46,7 +47,10 @@ export default function GMScheduleClient() {
           setAvailabilities(data.availabilities);
         }
       })
-      .catch((err) => console.error(err));
+      .catch((err) => {
+        // Replacing console.error with proper error handling
+        toast.error("Failed to load availabilities");
+      });
   }, [session, status, router]);
 
   const handleScheduleSubmit = async (e: React.FormEvent) => {
@@ -71,7 +75,6 @@ export default function GMScheduleClient() {
       setSessionTitle("");
       setSessionDate("");
     }
-    console.log("Scheduled session:", result);
   };
 
   const filteredAvailabilities = useMemo(() => {

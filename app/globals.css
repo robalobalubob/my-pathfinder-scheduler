@@ -5,39 +5,48 @@
 
 /* Define CSS variables for colors */
 :root {
-  --background: #f9f9f9;      /* Page background in light mode */
-  --foreground: #333333;      /* Main text color in light mode */
-  --primary: #3498db;         /* Primary color for buttons, etc. */
-  --primary-dark: #2980b9;    /* Darker variant for hover */
-  --secondary: #2c3e50;       /* For navigation or header backgrounds */
-  --accent: #1abc9c;          /* Accent color, if needed */
+  /* Light mode colors (default) */
+  --background: #f9f9f9;
+  --foreground: #333333;
+  --primary: #3498db;
+  --primary-dark: #2980b9;
+  --secondary: #2c3e50;
+  --accent: #1abc9c;
+
+  /* RGB versions for opacity/transparency work */
+  --primary-rgb: 52, 152, 219;
+  --secondary-rgb: 44, 62, 80;
+  --accent-rgb: 26, 188, 156;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #1a1a1a;      /* Dark background */
-    --foreground: #eaeaea;      /* Lighter text for dark mode */
-    --primary: #2980b9;         /* Adjust primary for dark mode */
-    --primary-dark: #1f6391;
-    --secondary: #1c1c1c;       /* Dark nav/header background */
-    --accent: #16a085;
-  }
+/* Dark mode colors (applied when .dark class is present on html element) */
+.dark {
+  --background: #1a1a1a;
+  --foreground: #eaeaea;
+  --primary: #2980b9;
+  --primary-dark: #1f6391;
+  --secondary: #1c1c1c;
+  --accent: #16a085;
+
+  /* RGB versions for opacity/transparency work */
+  --primary-rgb: 41, 128, 185;
+  --secondary-rgb: 28, 28, 28;
+  --accent-rgb: 22, 160, 133;
 }
 
 /* Base styles */
 body {
-  @apply bg-[var(--background)] text-[var(--foreground)] font-sans text-base leading-relaxed;
+  @apply bg-background text-foreground font-sans text-base leading-relaxed transition-colors duration-200;
 }
 
 /* Container */
 .container {
-  @apply max-w-5xl mx-auto p-4;
-  background-color: var(--background);
+  @apply max-w-5xl mx-auto p-4 bg-background transition-colors duration-200;
 }
 
 /* Headings */
 h1, h2, h3, h4, h5, h6 {
-  @apply text-[var(--foreground)] mb-5 font-semibold;
+  @apply text-foreground mb-5 font-semibold transition-colors duration-200;
 }
 
 /* Paragraphs */
@@ -45,191 +54,118 @@ p {
   @apply mb-4;
 }
 
-/* Navigation */
-nav {
-  @apply flex gap-4 mb-8;
-}
-
-nav button,
-nav a.button {
-  @apply bg-[var(--secondary)] text-white py-2 px-4 rounded transition-all;
-}
-
-nav button:hover,
-nav a.button:hover {
-  @apply bg-gray-600;
-}
-
 /* Button Styles */
-.button {
-  @apply bg-[var(--primary)] text-white py-2 px-4 rounded transition-all;
+.btn {
+  @apply px-4 py-2 rounded font-medium transition-all duration-200;
 }
 
-.button:hover {
-  @apply bg-[var(--primary-dark)] transform -translate-y-1;
+.btn-primary {
+  @apply bg-primary text-white hover:bg-primary-dark;
 }
 
-.button-secondary {
-  @apply bg-gray-500 text-white py-2 px-4 rounded transition-all;
+.btn-secondary {
+  @apply bg-gray-500 text-white hover:bg-gray-600;
 }
 
-.button-secondary:hover {
-  @apply bg-gray-600;
+.btn-danger {
+  @apply bg-red-500 text-white hover:bg-red-600;
 }
 
-/* Active button */
-.button.active,
-.button-secondary.active {
-  @apply bg-[var(--accent)] text-white;
+.btn-success {
+  @apply bg-green-500 text-white hover:bg-green-600;
 }
 
-/* Table Styles */
+/* Tables */
+.table-container {
+  @apply overflow-x-auto;
+}
+
 .table {
-  @apply w-full border-collapse mb-8 bg-white rounded shadow;
-}
-
-.table th,
-.table td {
-  @apply p-3 text-left;
+  @apply min-w-full border-collapse;
 }
 
 .table th {
-  @apply bg-[var(--secondary)] text-white font-bold border-b-2;
+  @apply bg-gray-200 dark:bg-gray-700 border p-2 text-left font-semibold;
+}
+
+.table td {
+  @apply border p-2;
 }
 
 .table tr:nth-child(even) {
-  @apply bg-gray-100;
+  @apply bg-gray-100 dark:bg-gray-800;
 }
 
 .table tr:hover {
-  @apply bg-gray-200;
+  @apply bg-gray-200 dark:bg-gray-700;
 }
 
-/* Form Input Styles */
-input[type="text"],
-input[type="number"],
-input[type="password"],
-input[type="email"],
-select,
-textarea {
-  @apply w-full p-2 border-2 border-gray-300 rounded transition-all text-[var(--foreground)] bg-white;
-  font-size: 14px;
+/* Form elements */
+.form-group {
+  @apply mb-4;
 }
 
-input[type="text"]:focus,
-input[type="number"]:focus,
-input[type="password"]:focus,
-input[type="email"]:focus, 
-select:focus,
-textarea:focus {
-  @apply border-[var(--primary)] outline-none;
-  /* Use arbitrary value for the focus shadow */
-  box-shadow: 0 0 5px rgba(52,152,219,0.5);
+.form-label {
+  @apply block mb-1 text-sm font-medium;
 }
 
-/* Error & Success States */
-input.error,
-select.error,
-textarea.error {
-  @apply border-red-500;
-  box-shadow: 0 0 5px rgba(231,76,60,0.5);
+.form-input {
+  @apply w-full border border-gray-300 dark:border-gray-600 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-700 text-foreground transition-colors duration-200;
 }
 
-input.success,
-select.success,
-textarea.success {
-  @apply border-green-600;
-  box-shadow: 0 0 5px rgba(39,174,96,0.5);
+.form-error {
+  @apply text-red-500 text-sm mt-1;
 }
 
-/* Form Labels */
-label {
-  @apply block mb-1 font-medium text-[var(--foreground)];
+/* Card styles */
+.card {
+  @apply bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700;
 }
 
-/* Link Styles */
-a {
-  @apply text-[var(--foreground)] no-underline transition-colors;
-}
-a:hover {
-  @apply text-[var(--foreground)];
+/* Alert/message styles */
+.alert {
+  @apply p-4 mb-4 rounded-lg border;
 }
 
-/* Dark Mode Overrides */
-@media (prefers-color-scheme: dark) {
-  body {
-    @apply bg-[var(--background)] text-[var(--foreground)];
-  }
-  
-  .container {
-    background-color: var(--background);
-  }
-  
-  h1, h2, h3, h4, h5, h6 {
-    color: var(--foreground);
-  }
-  
-  nav button,
-  nav a.button {
-    @apply bg-[var(--secondary)] text-white;
-  }
-  
-  nav button:hover,
-  nav a.button:hover {
-    @apply bg-gray-700;
-  }
-  
-  .button {
-    @apply bg-[var(--primary)] text-white;
-  }
-  
-  .button:hover {
-    @apply bg-[var(--primary-dark)] transform -translate-y-1;
-  }
-  
-  .table {
-    @apply bg-[#2a2a2a] shadow-lg;
-  }
-  
-  .table th {
-    @apply bg-[#333333] border-b-[#444444];
-  }
-  
-  .table tr:nth-child(even) {
-    @apply bg-[#242424];
-  }
-  
-  .table tr:hover {
-    @apply bg-[#1f1f1f];
-  }
-  
-  input[type="text"],
-  input[type="number"],
-  input[type="password"],
-  input[type="email"],
-  select,
-  textarea {
-    @apply bg-[#3a3a3a] border-[#555555] text-[var(--foreground)];
-  }
-  
-  input[type="text"]:focus,
-  input[type="number"]:focus,
-  input[type="password"]:focus,
-  input[type="email"]:focus, 
-  select:focus,
-  textarea:focus {
-    @apply border-[var(--primary)] outline-none;
-    box-shadow: 0 0 5px rgba(41,128,185,0.5);
-  }
-  
-  label {
-    @apply text-[var(--foreground)];
-  }
-  
-  a {
-    @apply text-[var(--foreground)] no-underline transition-colors;
-  }
-  a:hover {
-    @apply text-[var(--foreground)];
-  }
+.alert-success {
+  @apply bg-green-100 dark:bg-green-900/30 border-green-400 text-green-700 dark:text-green-300;
+}
+
+.alert-error {
+  @apply bg-red-100 dark:bg-red-900/30 border-red-400 text-red-700 dark:text-red-300;
+}
+
+.alert-info {
+  @apply bg-blue-100 dark:bg-blue-900/30 border-blue-400 text-blue-700 dark:text-blue-300;
+}
+
+/* Badge styles */
+.badge {
+  @apply px-2 py-0.5 rounded text-sm;
+}
+
+.badge-gray {
+  @apply bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200;
+}
+
+.badge-blue {
+  @apply bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100;
+}
+
+.badge-green {
+  @apply bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100;
+}
+
+.badge-red {
+  @apply bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100;
+}
+
+/* Utility classes for animations */
+.animate-fade-in {
+  @apply transition-opacity duration-300 ease-in-out;
+}
+
+/* Borders and dividers */
+.divider {
+  @apply border-t border-gray-200 dark:border-gray-700 my-4;
 }

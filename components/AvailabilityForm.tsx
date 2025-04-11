@@ -52,7 +52,7 @@ const AvailabilityForm: React.FC = () => {
       repeatWeeks: repeatOption === 'weeks' ? repeatWeeks : null,
     };
   
-    const response = await fetch('/api/schedule', {
+    const response = await fetch('/api/availabilities', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

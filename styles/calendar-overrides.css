@@ -1,13 +1,90 @@
+/* Calendar component styling overrides */
+/* Used by the react-big-calendar component */
+
+/* Today's date cell */
 .rbc-today {
-    background-color: var(--primary) !important;
-    color: #ffffff !important;
+  background-color: rgba(var(--primary-rgb), 0.1) !important;
+  color: var(--foreground) !important;
 }
 
+/* Off-range date cells */
 .rbc-off-range-bg {
-    color: var(--foreground) !important;
+  background-color: rgba(0, 0, 0, 0.05) !important;
 }
 
-.rbc-header {
-    color: var(--foreground) !important;
+.dark .rbc-off-range-bg {
+  background-color: rgba(255, 255, 255, 0.05) !important;
 }
-  
+
+/* Calendar headers */
+.rbc-header {
+  color: var(--foreground) !important;
+  padding: 10px 3px !important;
+  font-weight: 500 !important;
+  border-bottom: 1px solid #ddd !important;
+}
+
+.dark .rbc-header {
+  border-bottom: 1px solid #444 !important;
+}
+
+/* Month view overrides */
+.rbc-month-view {
+  border: 1px solid #ddd !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+.dark .rbc-month-view {
+  border: 1px solid #444 !important;
+}
+
+/* Event styling */
+.rbc-event {
+  border-radius: 4px !important;
+  padding: 2px 5px !important;
+  font-weight: 400 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+.dark .rbc-event {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Calendar toolbar */
+.rbc-toolbar {
+  margin-bottom: 20px !important;
+  padding-bottom: 10px !important;
+  border-bottom: 1px solid #eaeaea !important;
+}
+
+.dark .rbc-toolbar {
+  border-bottom: 1px solid #333 !important;
+}
+
+.rbc-toolbar button {
+  color: var(--foreground) !important;
+  border: 1px solid #ccc !important;
+  border-radius: 4px !important;
+  padding: 5px 15px !important;
+  transition: all 0.2s ease !important;
+}
+
+.dark .rbc-toolbar button {
+  border: 1px solid #555 !important;
+}
+
+.rbc-toolbar button:hover {
+  background-color: rgba(var(--primary-rgb), 0.1) !important;
+}
+
+.rbc-toolbar button.rbc-active {
+  background-color: var(--primary) !important;
+  color: white !important;
+  border-color: var(--primary) !important;
+}
+
+/* Ensure text in calendar is readable in dark mode */
+.dark .rbc-calendar {
+  color: var(--foreground);
+}

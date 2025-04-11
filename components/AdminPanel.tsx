@@ -2,6 +2,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 interface User {
   id: string;
@@ -14,95 +15,151 @@ export default function AdminPanel() {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "loading") return;
     if (!session || session.user.role !== "admin") {
+      toast.error("You don't have permission to view this page");
       router.push("/");
       return;
     }
+    
     async function fetchUsers() {
-      const res = await fetch("/api/users?excludeRole=admin", { cache: "no-store" });
-      const data = await res.json();
-      setUsers(data.users || []);
-      setLoading(false);
+      try {
+        setLoading(true);
+        const res = await fetch("/api/users?excludeRole=admin", { cache: "no-store" });
+        if (!res.ok) {
+          throw new Error("Failed to fetch users");
+        }
+        const data = await res.json();
+        setUsers(data.users || []);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        toast.error("Failed to load users");
+      } finally {
+        setLoading(false);
+      }
     }
+    
     fetchUsers();
   }, [session, status, router]);
 
   const updateUserRole = async (id: string, newRole: string) => {
-    const res = await fetch(`/api/users/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ newRole }),
-    });
-    const result = await res.json();
-    if (result.error) {
-      alert("Error updating role");
-    } else {
-      alert("Role updated successfully");
+    if (actionInProgress) return;
+    
+    try {
+      setActionInProgress(id);
+      const res = await fetch(`/api/users/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newRole }),
+      });
+      
+      const result = await res.json();
+      if (!res.ok || result.error) {
+        throw new Error(result.message || "Failed to update role");
+      }
+      
+      toast.success(`Role updated to ${newRole} successfully`);
       setUsers((prev) =>
         prev.map((user) => (user.id === id ? { ...user, role: newRole } : user))
       );
+    } catch (error) {
+      console.error("Error updating role:", error);
+      toast.error(`Error updating role: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setActionInProgress(null);
     }
   };
 
-  const deleteUser = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this user?")) return;
-    const res = await fetch(`/api/users/${id}`, {
-      method: "DELETE",
-    });
-    const result = await res.json();
-    if (result.error) {
-      alert("Error deleting user");
-    } else {
-      alert("User deleted successfully");
+  const deleteUser = async (id: string, email: string) => {
+    if (actionInProgress) return;
+    
+    if (!confirm(`Are you sure you want to delete user ${email}? This action cannot be undone.`)) {
+      return;
+    }
+    
+    try {
+      setActionInProgress(id);
+      const res = await fetch(`/api/users/${id}`, {
+        method: "DELETE",
+      });
+      
+      const result = await res.json();
+      if (!res.ok || result.error) {
+        throw new Error(result.message || "Failed to delete user");
+      }
+      
+      toast.success("User deleted successfully");
       setUsers((prev) => prev.filter((user) => user.id !== id));
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast.error(`Error deleting user: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setActionInProgress(null);
     }
   };
 
-  if (loading) return <p>Loading users...</p>;
+  if (loading) return <p className="text-center py-8">Loading users...</p>;
 
   return (
-    <div>
+    <div className="space-y-8">
       <h2 className="text-xl font-bold mb-4">Admin Panel: Manage User Roles</h2>
+      
       {users.length === 0 ? (
-        <p>No new accounts to manage.</p>
+        <div className="text-center py-8 bg-gray-100 dark:bg-gray-800 rounded-lg">
+          <p className="text-lg">No users to manage</p>
+        </div>
       ) : (
-        <ul className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
           {users.map((user) => (
-            <li key={user.id} className="border p-4 rounded">
-              <p>
-                <strong>Email:</strong> {user.email}
+            <div 
+              key={user.id} 
+              className="border p-4 rounded-lg shadow-sm bg-background hover:shadow-md transition-shadow"
+            >
+              <p className="mb-1">
+                <span className="font-semibold">Email:</span> {user.email}
               </p>
-              <p>
-                <strong>Current Role:</strong> {user.role}
+              <p className="mb-3">
+                <span className="font-semibold">Current Role:</span>{" "}
+                <span className={`px-2 py-0.5 rounded text-sm ${
+                  user.role === "player" 
+                    ? "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100" 
+                    : user.role === "gm" 
+                      ? "bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100"
+                      : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                }`}>
+                  {user.role}
+                </span>
               </p>
-              <div className="flex items-center space-x-2">
+              
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => updateUserRole(user.id, "player")}
-                  className="px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={user.role === "player"}
+                  className="px-3 py-1.5 bg-green-500 text-white rounded text-sm font-medium hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={user.role === "player" || actionInProgress === user.id}
                 >
                   Make Player
                 </button>
                 <button
                   onClick={() => updateUserRole(user.id, "gm")}
-                  className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={user.role === "gm"}
+                  className="px-3 py-1.5 bg-blue-500 text-white rounded text-sm font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={user.role === "gm" || actionInProgress === user.id}
                 >
                   Make GM
                 </button>
                 <button
-                  onClick={() => deleteUser(user.id)}
-                  className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                  onClick={() => deleteUser(user.id, user.email)}
+                  className="px-3 py-1.5 bg-red-500 text-white rounded text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={actionInProgress === user.id}
                 >
                   Delete User
                 </button>
               </div>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

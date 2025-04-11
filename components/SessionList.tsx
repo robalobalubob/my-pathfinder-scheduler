@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import toast from 'react-hot-toast';
 
 interface SessionItem {
   id: number;
@@ -16,25 +17,35 @@ export default function SessionList() {
 
   useEffect(() => {
     async function fetchSessions() {
-      const res = await fetch("/api/sessions", { cache: "no-store" });
-      const data = await res.json();
-      if (data.sessions) {
-        setSessions(data.sessions);
+      try {
+        const res = await fetch("/api/sessions", { cache: "no-store" });
+        const data = await res.json();
+        if (data.sessions) {
+          setSessions(data.sessions);
+        }
+      } catch (error) {
+        toast.error("Failed to load sessions");
+        console.error("Error loading sessions:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     fetchSessions();
   }, []);
 
   const deleteSession = async (id: number) => {
     if (!confirm("Are you sure you want to delete this session?")) return;
-    const res = await fetch(`/api/sessions/${id}`, { method: "DELETE" });
-    const result = await res.json();
-    if (result.error) {
-      alert("Error deleting session: " + result.message);
-    } else {
-      alert("Session deleted successfully");
+    try {
+      const res = await fetch(`/api/sessions/${id}`, { method: "DELETE" });
+      const result = await res.json();
+      if (!res.ok || result.error) {
+        throw new Error(result.message || "Something went wrong");
+      }
+      toast.success("Session deleted successfully");
       setSessions((prev) => prev.filter((session) => session.id !== id));
+    } catch (error) {
+      toast.error(`Error deleting session: ${error instanceof Error ? error.message : "Unknown error"}`);
+      console.error("Delete error:", error);
     }
   };
 
