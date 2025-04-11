@@ -92,7 +92,7 @@ export default function RegisterForm() {
       
       toast.success("Registration successful! Please sign in.");
       router.push("/api/auth/signin");
-    } catch (error: any) {
+    } catch (error: { message?: string }) {
       setGeneralError(error.message || "Registration failed. Please try again.");
       toast.error(error.message || "Registration failed. Please try again.");
     } finally {

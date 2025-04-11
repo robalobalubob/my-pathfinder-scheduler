@@ -84,7 +84,7 @@ export function Calendar({ userId, isGM, isAdmin }: CalendarProps) {
   const userParam = userId && !isGM && !isAdmin ? `&user_id=${userId}` : '';
   
   // Fetch sessions using our custom hook with optimized parameters
-  const { data, error: fetchError } = useFetch<{ sessions: any[] }>(
+  const { data, error: fetchError } = useFetch<{ sessions: SessionResource[] }>(
     isAuthenticated ? `/api/sessions${dateRangeParam}${userParam}` : null
   );
   
@@ -122,7 +122,7 @@ export function Calendar({ userId, isGM, isAdmin }: CalendarProps) {
 
     if (data?.sessions) {
       // Convert sessions to calendar events
-      const calendarEvents = data.sessions.map((session: any) => {
+      const calendarEvents = data.sessions.map((session: SessionResource) => {
         // Use session.date instead of session.session_date for consistency
         const start = new Date(session.date);
         // Use session duration if available, default to 3 hours otherwise

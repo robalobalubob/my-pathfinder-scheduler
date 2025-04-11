@@ -11,14 +11,31 @@ import { Alert } from "./ui/feedback/Alert";
 import { Spinner } from "./ui/feedback/Spinner";
 import { useRouter } from "next/navigation";
 
+// Define session interface
+interface Session {
+  id: string;
+  title: string;
+  date: string;
+  duration?: number;
+  description?: string;
+  location?: string;
+  gm_id: string;
+  created_at: string;
+  [key: string]: unknown;
+}
+
+interface SessionsResponse {
+  sessions: Session[];
+}
+
 export default function GMPageClient() {
   const router = useRouter();
   const { requireAuth, isGM, isAdmin, user } = useAuth();
   const [activeView, setActiveView] = useState<"calendar" | "list">("calendar");
   const [isLoading, setIsLoading] = useState(true);
   
-  // Get GM's sessions
-  const { data, error } = useFetch<{ sessions: any[] }>(
+  // Get GM's sessions with proper typing
+  const { data, error } = useFetch<SessionsResponse>(
     isGM && user?.id ? `/api/sessions?gmId=${user.id}` : null
   );
   

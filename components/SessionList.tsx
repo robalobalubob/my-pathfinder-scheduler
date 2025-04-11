@@ -99,7 +99,7 @@ export default function SessionList() {
     try {
       const date = new Date(dateString);
       return format(date, "MMMM d, yyyy 'at' h:mm a");
-    } catch (error) {
+    } catch (_) {
       return dateString;
     }
   };

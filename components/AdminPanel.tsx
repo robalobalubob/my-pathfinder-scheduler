@@ -12,12 +12,6 @@ import { Select, SelectOption } from "./ui/form/Select";
 import { Alert } from "./ui/feedback/Alert";
 import { Spinner } from "./ui/feedback/Spinner";
 
-// Define error type
-interface ApiError {
-  message: string;
-  [key: string]: unknown;
-}
-
 interface User {
   id: string;
   name: string;
@@ -70,7 +64,7 @@ export default function AdminPanel() {
       
       toast.success("User role updated successfully");
       mutate(); // Refresh data
-    } catch (error: ApiError) {
+    } catch (error: any) {
       toast.error(error.message || "Failed to update user role");
     } finally {
       setActionInProgress(null);
@@ -90,7 +84,7 @@ export default function AdminPanel() {
       
       toast.success("User deleted successfully");
       mutate(); // Refresh data
-    } catch (error: ApiError) {
+    } catch (error: any) {
       toast.error(error.message || "Failed to delete user");
     } finally {
       setActionInProgress(null);

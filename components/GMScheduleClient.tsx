@@ -26,11 +26,6 @@ interface PlayerAvailability {
   [key: string]: unknown;
 }
 
-interface ApiError {
-  message: string;
-  [key: string]: unknown;
-}
-
 interface AvailabilityData {
   playerAvailability: PlayerAvailability[];
 }
@@ -110,7 +105,7 @@ export default function GMScheduleClient() {
       
       toast.success("Session scheduled successfully!");
       router.push("/gm");
-    } catch (error: ApiError) {
+    } catch (error: any) {
       setError(error.message || "Failed to schedule session");
       toast.error(error.message || "Failed to schedule session");
       setIsSubmitting(false);
