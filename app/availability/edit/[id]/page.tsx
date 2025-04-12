@@ -4,6 +4,12 @@ export const metadata = {
   title: "Edit Availability",
 };
 
-export default function AvailabilityPage() {
-  return <AvailabilityEdit />;
+interface AvailabilityPageProps {
+  params: {
+    id: string;
+  };
+}
+
+export default function AvailabilityPage({ params }: AvailabilityPageProps) {
+  return <AvailabilityEdit availabilityId={params.id} />;
 }
