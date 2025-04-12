@@ -85,10 +85,11 @@ export default function SessionList() {
       
       // Refresh the session list
       mutate();
-    } catch (error: { message?: string }) {
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
       setFeedbackMessage({
         type: "error",
-        text: `Error deleting session: ${error.message || "Unknown error"}`
+        text: `Error deleting session: ${errorMsg}`
       });
     } finally {
       setActionInProgress(null);
@@ -99,7 +100,22 @@ export default function SessionList() {
     try {
       const date = new Date(dateString);
       return format(date, "MMMM d, yyyy 'at' h:mm a");
-    } catch {
+    } catch (error: unknown) {
+      // More robust error handling with appropriate type checking
+      if (error instanceof Error) {
+        // Log structured error information
+        console.error({
+          message: "Error formatting date in SessionList",
+          dateString,
+          errorMessage: error.message,
+          errorName: error.name,
+          stack: error.stack
+        });
+      } else {
+        // For non-Error objects
+        console.error("Unknown error formatting date:", error);
+      }
+      // Still return a fallback value
       return dateString;
     }
   };

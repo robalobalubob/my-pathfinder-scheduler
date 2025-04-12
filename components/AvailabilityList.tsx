@@ -68,9 +68,10 @@ export default function AvailabilityList({ availabilities, onDelete }: Availabil
       if (onDelete) {
         onDelete();
       }
-    } catch (err: { message?: string }) {
-      setError(err.message || "Failed to delete availability");
-      toast.error(err.message || "Failed to delete availability");
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to delete availability";
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setActionInProgress(null);
     }

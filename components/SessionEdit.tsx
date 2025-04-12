@@ -107,9 +107,10 @@ export default function SessionEdit({ sessionId }: SessionEditProps) {
       
       toast.success("Session updated successfully");
       router.push("/");
-    } catch (err: { message?: string }) {
-      setError(err.message || "Failed to update session");
-      toast.error(err.message || "Failed to update session");
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to update session";
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -124,9 +125,10 @@ export default function SessionEdit({ sessionId }: SessionEditProps) {
       
       toast.success("Session deleted successfully");
       router.push("/");
-    } catch (err: { message?: string }) {
-      setError(err.message || "Failed to delete session");
-      toast.error(err.message || "Failed to delete session");
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to delete session";
+      setError(errorMsg);
+      toast.error(errorMsg);
       setIsDeleting(false);
     }
   };

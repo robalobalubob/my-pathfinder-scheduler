@@ -68,10 +68,28 @@ export default function GMScheduleClient() {
       // Display error toast if availability fetch fails
       if (availabilityError) {
         toast.error("Failed to load player availability data. You can still create a session.");
-        console.error("Availability fetch error:", availabilityError);
+        
+        // Improved structured error logging
+        if (availabilityError instanceof Error) {
+          console.error({
+            message: "Availability fetch error in GMScheduleClient",
+            context: "User attempted to load availability data",
+            errorMessage: availabilityError.message,
+            errorName: availabilityError.name,
+            stack: availabilityError.stack,
+            userId: user?.id
+          });
+        } else {
+          console.error({
+            message: "Unknown availability fetch error in GMScheduleClient",
+            context: "User attempted to load availability data",
+            error: availabilityError,
+            userId: user?.id
+          });
+        }
       }
     }
-  }, [requireAuth, isGM, isAdmin, availabilityData, availabilityError]);
+  }, [requireAuth, isGM, isAdmin, availabilityData, availabilityError, user?.id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -105,9 +123,10 @@ export default function GMScheduleClient() {
       
       toast.success("Session scheduled successfully!");
       router.push("/gm");
-    } catch (error: { message?: string }) {
-      setError(error.message || "Failed to schedule session");
-      toast.error(error.message || "Failed to schedule session");
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : "Failed to schedule session";
+      setError(errorMsg);
+      toast.error(errorMsg);
       setIsSubmitting(false);
     }
   };

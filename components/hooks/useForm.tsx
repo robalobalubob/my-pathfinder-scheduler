@@ -43,7 +43,7 @@ export function useForm<T extends Record<string, FieldValue>>({
         isValid: true,
       }));
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof z.ZodError) {
         const fieldErrors: Partial<Record<keyof T, string>> = {};
         error.errors.forEach((err) => {
@@ -77,7 +77,7 @@ export function useForm<T extends Record<string, FieldValue>>({
             [name]: undefined,
           },
         }));
-      } catch (error) {
+      } catch (error: unknown) {
         if (error instanceof z.ZodError) {
           setFormState((prev) => ({
             ...prev,
@@ -161,8 +161,23 @@ export function useForm<T extends Record<string, FieldValue>>({
 
       try {
         await onSubmit(formState.values);
-      } catch (error) {
-        console.error("Form submission error:", error);
+      } catch (error: unknown) {
+        // Structured error logging with context
+        if (error instanceof Error) {
+          console.error({
+            message: "Form submission error",
+            formData: { ...formState.values },
+            errorName: error.name,
+            errorMessage: error.message,
+            stack: error.stack
+          });
+        } else {
+          console.error({
+            message: "Unknown form submission error",
+            formData: { ...formState.values },
+            error
+          });
+        }
       } finally {
         setFormState((prev) => ({
           ...prev,

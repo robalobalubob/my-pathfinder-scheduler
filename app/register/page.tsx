@@ -7,7 +7,7 @@ export const metadata = {
 export default function RegisterPage() {
   return (
     <div className="container mx-auto p-4">
-      <RegisterForm title="Create an Account" />
+      <RegisterForm />
     </div>
   );
 }
