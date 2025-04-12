@@ -29,11 +29,14 @@ export default function AvailabilityList({ availabilities, onDelete }: Availabil
 
   // Format day of week with capitalization 
   const formatDayOfWeek = (day: string): string => {
+    if (!day) return "Unknown";
     return day.charAt(0).toUpperCase() + day.slice(1).toLowerCase();
   };
 
   // Format time from 24h to 12h format
   const formatTime = (time: string): string => {
+    if (!time) return "N/A";
+    
     const [hours, minutes] = time.split(':').map(Number);
     let period = "AM";
     
@@ -80,7 +83,9 @@ export default function AvailabilityList({ availabilities, onDelete }: Availabil
   // Sort availabilities by day of week
   const sortedAvailabilities = [...availabilities].sort((a, b) => {
     const dayOrder = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-    return dayOrder.indexOf(a.day_of_week.toLowerCase()) - dayOrder.indexOf(b.day_of_week.toLowerCase());
+    const dayA = (a.day_of_week || "").toLowerCase();
+    const dayB = (b.day_of_week || "").toLowerCase();
+    return dayOrder.indexOf(dayA) - dayOrder.indexOf(dayB);
   });
 
   return (
