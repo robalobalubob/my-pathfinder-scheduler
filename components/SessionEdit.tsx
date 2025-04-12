@@ -1,114 +1,294 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 
-interface SessionItem {
-  id: number;
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
+import { useAuth } from "./hooks/useAuth";
+import { useFetch, updateData, deleteData } from "./hooks/useFetch";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "./ui/layout/Card";
+import { FormField } from "./ui/form/FormField";
+import { Input } from "./ui/form/Input";
+import { Button } from "./ui/form/Button";
+import { DateTimePicker } from "./ui/form/DateTimePicker";
+import { Spinner } from "./ui/feedback/Spinner";
+import { Alert } from "./ui/feedback/Alert";
+
+interface Session {
+  id: string;
   title: string;
-  session_date: string;
+  date: string;
+  duration?: number;
+  description?: string;
+  location?: string;
+  gm_id: string;
   created_at: string;
 }
 
-export default function SessionEdit() {
-  const { id } = useParams();
+interface SessionResponse {
+  session: Session;
+}
+
+interface SessionEditProps {
+  sessionId: string;
+}
+
+export default function SessionEdit({ sessionId }: SessionEditProps) {
   const router = useRouter();
-  const { data: session, status } = useSession();
-
-  const [title, setTitle] = useState("");
-  const [sessionDate, setSessionDate] = useState("");
-  const [loading, setLoading] = useState(true);
-
+  const { isGM, isAdmin, user, requireAuth } = useAuth();
+  const [formData, setFormData] = useState({
+    title: "",
+    date: "",
+    duration: 180, // Default duration 3 hours in minutes
+    description: "",
+    location: ""
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  
+  // Fetch session data using our custom hook
+  const { 
+    data, 
+    error: fetchError, 
+    isLoading 
+  } = useFetch<SessionResponse>(
+    isGM || isAdmin ? `/api/sessions/${sessionId}` : null
+  );
+  
+  // Ensure the user is authorized to edit this session
   useEffect(() => {
-    if (status === "loading") return;
-    if (!session || !session.user || (session.user.role !== "gm" && session.user.role !== "admin")) {
-      router.push("/");
-      return;
-    }
-    async function fetchSessions() {
-      try{
-        const res = await fetch("/api/sessions", { cache: "no-store" });
-        const data = await res.json();
-        const sessionItem = data.sessions.find((item: SessionItem) => item.id.toString() === id);
-        if (!sessionItem) {
-          alert("Session not found or you are not authorized to edit it.");
-          router.push("/gm/schedule");
-          return;
-        }
-        setTitle(sessionItem.title);
-        const dt = new Date(sessionItem.session_date);
-        const localDatetime = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000)
-          .toISOString()
-          .slice(0, 16);
-        setSessionDate(localDatetime);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching session:", error);
-        alert("Error fetching session details.");
-        router.push("/gm/schedule");
-      }
-    }
-    fetchSessions();
-  }, [id, session, status, router]);
+    const hasAccess = requireAuth(['gm', 'admin']);
+    if (!hasAccess) return;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title || !sessionDate) {
-      alert("Please fill out all fields.");
-      return;
-    }
-    try {
-      const res = await fetch(`/api/sessions/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, session_date: new Date(sessionDate).toISOString() }),
-      });
-      const result = await res.json();
-      if (!res.ok) {
-        alert("Failed to update session: " + (result.message || "Unknown error"));
-      } else {
-        alert("Session updated successfully!");
-        router.push("/gm/schedule");
+    // Redirect if user doesn't have permission
+    if (data?.session && !isAdmin) {
+      const isOwner = data.session.gm_id === user?.id;
+      if (!isOwner) {
+        toast.error("You don't have permission to edit this session");
+        router.push("/");
       }
-    } catch (error) {
-      console.error("Error updating session:", error);
-      alert("Failed to update session.");
+    }
+  }, [data, isAdmin, requireAuth, router, user]);
+  
+  // Populate form with session data when available
+  useEffect(() => {
+    if (data?.session) {
+      // Convert date string to datetime-local format
+      const dateObj = new Date(data.session.date);
+      const formattedDate = dateObj.toISOString().slice(0, 16);
+      
+      setFormData({
+        title: data.session.title,
+        date: formattedDate,
+        duration: data.session.duration || 180,
+        description: data.session.description || "",
+        location: data.session.location || ""
+      });
+    }
+  }, [data]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+    
+    try {
+      if (!formData.title || !formData.date) {
+        throw new Error("Title and date are required");
+      }
+      
+      await updateData(`/api/sessions/${sessionId}`, formData);
+      
+      toast.success("Session updated successfully");
+      router.push("/");
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to update session";
+      setError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  if (loading) return <p>Loading session details...</p>;
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    setError(null);
+    
+    try {
+      await deleteData(`/api/sessions/${sessionId}`);
+      
+      toast.success("Session deleted successfully");
+      router.push("/");
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to delete session";
+      setError(errorMsg);
+      toast.error(errorMsg);
+      setIsDeleting(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card className="max-w-xl mx-auto">
+        <CardContent className="flex items-center justify-center p-8">
+          <Spinner size="lg" label="Loading session..." />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <Alert variant="error" className="max-w-xl mx-auto">
+        Failed to load session. Please try again later.
+      </Alert>
+    );
+  }
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Edit Session</h1>
-      <form onSubmit={handleSubmit} className="max-w-lg mx-auto p-6 bg-background text-foreground rounded-lg shadow-md space-y-4">
-        <div>
-          <label className="block mb-1">Session Title:</label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+    <Card className="max-w-xl mx-auto">
+      <CardHeader>
+        <CardTitle>Edit Session</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {error && (
+          <Alert 
+            variant="error" 
+            className="mb-4"
+            onClose={() => setError(null)}
+          >
+            {error}
+          </Alert>
+        )}
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <FormField 
+            label="Session Title" 
+            htmlFor="title"
             required
-            className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-foreground placeholder-gray-400"
-          />
-        </div>
-        <div>
-          <label className="block mb-1">Session Date &amp; Time:</label>
-          <input
-            type="datetime-local"
-            value={sessionDate}
-            onChange={(e) => {setSessionDate(e.target.value);}}
+          >
+            <Input
+              id="title"
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              placeholder="Session Title"
+              required
+            />
+          </FormField>
+          
+          <FormField 
+            label="Session Date & Time" 
+            htmlFor="date"
             required
-            className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-foreground"
-          />
-        </div>
-        <button
-          type="submit"
-          className="w-full bg-primary text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
-        >
-          Save Changes
-        </button>
-      </form>
-    </div>
+          >
+            <DateTimePicker
+              id="date"
+              name="date"
+              value={formData.date}
+              onChange={handleChange}
+              required
+            />
+          </FormField>
+          
+          <FormField 
+            label="Duration (minutes)" 
+            htmlFor="duration"
+            description="Default is 3 hours (180 minutes)"
+          >
+            <Input
+              type="number"
+              id="duration"
+              name="duration"
+              value={formData.duration.toString()}
+              onChange={handleChange}
+              min="30"
+              max="720"
+            />
+          </FormField>
+          
+          <FormField 
+            label="Description" 
+            htmlFor="description"
+          >
+            <Input
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="Session details..."
+            />
+          </FormField>
+          
+          <FormField 
+            label="Location" 
+            htmlFor="location"
+          >
+            <Input
+              id="location"
+              name="location"
+              value={formData.location}
+              onChange={handleChange}
+              placeholder="Physical location or virtual meeting link"
+            />
+          </FormField>
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-between pt-4">
+            <Button 
+              type="button" 
+              variant="destructive" 
+              onClick={() => setShowConfirmDelete(true)}
+              disabled={isSubmitting || isDeleting}
+            >
+              Delete Session
+            </Button>
+            
+            <Button 
+              type="submit" 
+              isLoading={isSubmitting}
+              disabled={isSubmitting || isDeleting}
+            >
+              Save Changes
+            </Button>
+          </div>
+        </form>
+        
+        {showConfirmDelete && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="max-w-md w-full">
+              <CardHeader>
+                <CardTitle>Confirm Delete</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p>Are you sure you want to delete this session? This action cannot be undone.</p>
+              </CardContent>
+              <CardFooter className="flex justify-end gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowConfirmDelete(false)}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={handleDelete}
+                  isLoading={isDeleting}
+                  disabled={isDeleting}
+                >
+                  Delete
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

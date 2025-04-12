@@ -1,236 +1,323 @@
 "use client";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState, useMemo } from "react";
 
-interface Availability {
-  id: number;
-  name: string;
-  selected_days: string[];
-  time_option: string;
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "react-hot-toast";
+import { useAuth } from "./hooks/useAuth";
+import { useFetch, postData } from "./hooks/useFetch";
+import { Card, CardHeader, CardTitle, CardContent } from "./ui/layout/Card";
+import { FormField } from "./ui/form/FormField";
+import { Input } from "./ui/form/Input";
+import { Button } from "./ui/form/Button";
+import { DateTimePicker } from "./ui/form/DateTimePicker";
+import { Alert } from "./ui/feedback/Alert";
+import { Spinner } from "./ui/feedback/Spinner";
+
+// Define player availability interface
+interface PlayerAvailability {
+  id: string;
+  user_id: string;
+  user_name?: string;
+  selected_days?: string[];
   start_time: string;
   end_time: string;
-  repeat_option: string;
-  repeat_weeks: number | null;
+  notes?: string;
   created_at: string;
+  [key: string]: unknown;
+}
+
+interface AvailabilityData {
+  playerAvailability: PlayerAvailability[];
 }
 
 export default function GMScheduleClient() {
-  const { data: session, status } = useSession();
   const router = useRouter();
-  const [availabilities, setAvailabilities] = useState<Availability[]>([]);
-  const [sessionTitle, setSessionTitle] = useState("");
-  const [sessionDate, setSessionDate] = useState("");
-
-  const [filterName, setFilterName] = useState("");
-  const [filterDays, setFilterDays] = useState<string[]>([]);
-  const [filterStartTime, setFilterStartTime] = useState("");
-  const [filterEndTime, setFilterEndTime] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-
+  const searchParams = useSearchParams();
+  const { requireAuth, isGM, isAdmin, user } = useAuth();
+  
+  // Initialize with date from query params if available
+  const initialDate = searchParams.get('date') || 
+    new Date().toISOString().slice(0, 16);
+  
+  const [formData, setFormData] = useState({
+    title: "",
+    date: initialDate, 
+    duration: "180", // Default to 3 hours (180 minutes)
+    description: "",
+    location: "",
+    max_players: "6", // Default max players
+  });
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Fetch player availability data
+  const { data: availabilityData, error: availabilityError } = useFetch<AvailabilityData>(
+    isGM || isAdmin ? `/api/availabilities/all` : null
+  );
+  
   useEffect(() => {
-    if (status === "loading") return;
-    if (
-      !session ||
-      !session.user ||
-      (session.user.role !== "gm" && session.user.role !== "admin")
-    ) {
-      router.push("/");
-      return;
-    }
+    // Require GM or admin authentication
+    const hasAccess = requireAuth(['gm', 'admin']);
+    if (!hasAccess) return;
 
-    fetch("/api/availabilities")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.availabilities) {
-          setAvailabilities(data.availabilities);
+    if (availabilityData || availabilityError) {
+      setIsLoading(false);
+      
+      // Display error toast if availability fetch fails
+      if (availabilityError) {
+        toast.error("Failed to load player availability data. You can still create a session.");
+        
+        // Improved structured error logging
+        if (availabilityError instanceof Error) {
+          console.error({
+            message: "Availability fetch error in GMScheduleClient",
+            context: "User attempted to load availability data",
+            errorMessage: availabilityError.message,
+            errorName: availabilityError.name,
+            stack: availabilityError.stack,
+            userId: user?.id
+          });
+        } else {
+          console.error({
+            message: "Unknown availability fetch error in GMScheduleClient",
+            context: "User attempted to load availability data",
+            error: availabilityError,
+            userId: user?.id
+          });
         }
-      })
-      .catch((err) => console.error(err));
-  }, [session, status, router]);
+      }
+    }
+  }, [requireAuth, isGM, isAdmin, availabilityData, availabilityError, user?.id]);
 
-  const handleScheduleSubmit = async (e: React.FormEvent) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!sessionTitle || !sessionDate) {
-      alert("Please provide both a title and a session date/time.");
-      return;
+    setIsSubmitting(true);
+    setError(null);
+    
+    try {
+      // Validate form data
+      if (!formData.title || !formData.date) {
+        throw new Error("Title and date are required");
+      }
+      
+      // Parse numeric fields
+      const sessionData = {
+        ...formData,
+        duration: parseInt(formData.duration),
+        max_players: parseInt(formData.max_players),
+        gm_id: user?.id
+      };
+      
+      // Submit session data
+      await postData("/api/sessions", sessionData);
+      
+      toast.success("Session scheduled successfully!");
+      router.push("/gm");
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : "Failed to schedule session";
+      setError(errorMsg);
+      toast.error(errorMsg);
+      setIsSubmitting(false);
     }
-
-    const res = await fetch("/api/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: sessionTitle, session_date: sessionDate }),
-    });
-    const result = await res.json();
-
-    if (!res.ok) {
-      alert("Failed to schedule session: " + (result.message || "Unknown error."));
-    } else {
-      alert("Session scheduled successfully!");
-      setSessionTitle("");
-      setSessionDate("");
-    }
-    console.log("Scheduled session:", result);
   };
 
-  const filteredAvailabilities = useMemo(() => {
-    return availabilities.filter((avail) => {
-      if (filterName && !avail.name.toLowerCase().includes(filterName.toLowerCase())) {
-        return false;
-      }
-      if (filterDays.length > 0 && !filterDays.some((day) => avail.selected_days.includes(day))) {
-        return false;
-      }
-
-      if (avail.time_option !== "allDay" && filterStartTime && filterEndTime) {
-        if (avail.start_time < filterStartTime || avail.end_time > filterEndTime) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [availabilities, filterName, filterDays, filterStartTime, filterEndTime]);
-
-  const toggleFilterDay = (day: string) => {
-    setFilterDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+  if (isLoading) {
+    return (
+      <div className="flex justify-center p-8">
+        <Spinner size="lg" label="Loading..." />
+      </div>
     );
-  };
+  }
+
+  if (!isGM && !isAdmin) {
+    return (
+      <Alert variant="error">
+        You do not have permission to schedule sessions.
+      </Alert>
+    );
+  }
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">GM Scheduling Page</h1>
-
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Schedule a Session</h2>
-        <form
-          onSubmit={handleScheduleSubmit}
-          className="max-w-lg mx-auto p-6 bg-background text-foreground rounded-lg shadow-md space-y-4"
-        >
-          <input
-            type="text"
-            placeholder="Session Title"
-            value={sessionTitle}
-            onChange={(e) => setSessionTitle(e.target.value)}
-            required
-            className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary bg-transparent text-foreground placeholder-gray-400"
-          />
-          <input
-            type="datetime-local"
-            value={sessionDate}
-            onChange={(e) => setSessionDate(e.target.value)}
-            required
-            className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary bg-transparent text-foreground"
-          />
-          <button
-            type="submit"
-            className="w-full bg-primary text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
-          >
-            Schedule Session
-          </button>
-        </form>
-      </section>
-
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Player Availabilities</h2>
-        <button
-          onClick={() => setShowFilters((prev) => !prev)}
-          className="mb-4 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
-        >
-          {showFilters ? "Hide Filters" : "Show Filters"}
-        </button>
-
-        {showFilters && (
-          <div className="mb-4 p-4 border rounded">
-            <h3 className="text-lg font-semibold mb-2">Filters</h3>
-            <div className="mb-2">
-              <label className="block mb-1">Name:</label>
-              <input
-                type="text"
-                placeholder="Filter by name"
-                value={filterName}
-                onChange={(e) => setFilterName(e.target.value)}
-                className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-foreground placeholder-gray-400"
+    <div className="max-w-3xl mx-auto p-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Schedule a New Session</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <Alert 
+              variant="error" 
+              className="mb-6"
+              onClose={() => setError(null)}
+            >
+              {error}
+            </Alert>
+          )}
+          
+          {availabilityError && (
+            <Alert 
+              variant="warning" 
+              className="mb-6"
+            >
+              Unable to load player availability data. You can still schedule a session.
+            </Alert>
+          )}
+          
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <FormField 
+              label="Session Title" 
+              htmlFor="title"
+              required
+            >
+              <Input
+                id="title"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                placeholder="Enter a title for your session"
+                required
               />
-            </div>
-            <div className="mb-2">
-              <label className="block mb-1">Days:</label>
-              <div className="flex gap-2">
-                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => toggleFilterDay(day)}
-                    className={`px-3 py-1 m-1 rounded transition-colors duration-200 ${
-                      filterDays.includes(day)
-                        ? 'bg-green-500 text-white'
-                        : 'bg-gray-200 dark:bg-gray-700 text-foreground'
-                    }`}
-                  >
-                    {day.slice(0, 3)}
-                  </button>
-                ))}
+            </FormField>
+            
+            <FormField 
+              label="Date & Time" 
+              htmlFor="date"
+              required
+            >
+              <DateTimePicker
+                id="date"
+                name="date"
+                value={formData.date}
+                onChange={handleChange}
+                required
+              />
+            </FormField>
+            
+            <FormField 
+              label="Duration (minutes)" 
+              htmlFor="duration"
+              description="Default is 3 hours (180 minutes)"
+            >
+              <Input
+                type="number"
+                id="duration"
+                name="duration"
+                value={formData.duration}
+                onChange={handleChange}
+                min="30"
+                max="720"
+              />
+            </FormField>
+            
+            <FormField 
+              label="Maximum Players" 
+              htmlFor="max_players"
+            >
+              <Input
+                type="number"
+                id="max_players"
+                name="max_players"
+                value={formData.max_players}
+                onChange={handleChange}
+                min="1"
+                max="20"
+              />
+            </FormField>
+            
+            <FormField 
+              label="Location" 
+              htmlFor="location"
+              description="Physical location or virtual meeting link"
+            >
+              <Input
+                id="location"
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                placeholder="Where will this session be held?"
+              />
+            </FormField>
+            
+            <FormField 
+              label="Description" 
+              htmlFor="description"
+              description="Provide details about the session"
+            >
+              <textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Describe what players can expect in this session"
+                className="w-full min-h-[100px] px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            </FormField>
+            
+            {availabilityData && availabilityData.playerAvailability && availabilityData.playerAvailability.length > 0 ? (
+              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <h3 className="font-medium mb-2">Players Available Around This Time:</h3>
+                <div className="text-sm">
+                  {availabilityData.playerAvailability
+                    .filter(availability => {
+                      // Display players available on the selected day and time
+                      const sessionDate = new Date(formData.date);
+                      const availableDay = availability.selected_days && Array.isArray(availability.selected_days) ? 
+                        availability.selected_days.includes(
+                          ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][sessionDate.getDay()]
+                        ) : false;
+                      
+                      return availableDay;
+                    })
+                    .map(availability => (
+                      <div key={availability.id} className="mb-1">
+                        <span className="font-medium">{availability.user_name || 'Player'}</span>
+                        <span className="ml-2">
+                          {availability.start_time} - {availability.end_time}
+                        </span>
+                      </div>
+                    ))}
+                </div>
               </div>
+            ) : (
+              !availabilityError && (
+                <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg text-center">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No player availability data found for this time.</p>
+                </div>
+              )
+            )}
+            
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button 
+                type="button" 
+                variant="outline"
+                onClick={() => router.push("/gm")}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              
+              <Button 
+                type="submit" 
+                disabled={isSubmitting}
+                isLoading={isSubmitting}
+                loadingText="Scheduling..."
+              >
+                Schedule Session
+              </Button>
             </div>
-            <div className="mb-2">
-              <label className="block mb-1">Time Range:</label>
-              <div className="flex gap-2">
-                <input
-                  type="time"
-                  value={filterStartTime}
-                  onChange={(e) => setFilterStartTime(e.target.value)}
-                  className="border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-foreground"
-                  placeholder="From"
-                />
-                <input
-                  type="time"
-                  value={filterEndTime}
-                  onChange={(e) => setFilterEndTime(e.target.value)}
-                  className="border border-gray-300 p-2 rounded focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-foreground"
-                  placeholder="To"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {filteredAvailabilities.length === 0 ? (
-          <p>No availabilities match the filters.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse">
-              <thead>
-                <tr className="bg-gray-200 dark:bg-gray-700">
-                  <th className="border p-2 text-left">Name</th>
-                  <th className="border p-2 text-left">Days</th>
-                  <th className="border p-2 text-left">Time</th>
-                  <th className="border p-2 text-left">Repeat</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredAvailabilities.map((avail) => (
-                  <tr key={avail.id} className="border-b">
-                    <td className="border p-2">{avail.name}</td>
-                    <td className="border p-2">{avail.selected_days.join(", ")}</td>
-                    <td className="border p-2">
-                      {avail.time_option === "allDay"
-                        ? "All Day"
-                        : `${avail.start_time} to ${avail.end_time}`}
-                    </td>
-                    <td className="border p-2">
-                      {avail.repeat_option}
-                      {avail.repeat_option === "weeks" && avail.repeat_weeks
-                        ? ` (${avail.repeat_weeks} weeks)`
-                        : ""}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
